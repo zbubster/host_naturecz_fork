@@ -125,7 +125,7 @@ for(i in seq_along(evl_codes)){
     
     hab_code <- bio_codes[j]
     
-    message(hab_code)
+    message(evl_site, ":", hab_code)
     
     vmb_target_sjtsk_orig <- 
       vmb_zakl %>%
@@ -148,7 +148,6 @@ for(i in seq_along(evl_codes)){
         vmb_target_sjtsk_update, 
         vmb_target_sjtsk_orig
       ) %>%
-      sf::st_make_valid() %>%
       dplyr::filter(
         base::as.character(sf::st_geometry_type(.)) %in% c("POLYGON", "MULTIPOLYGON")
       ) %>%
@@ -170,7 +169,8 @@ for(i in seq_along(evl_codes)){
           PASEKA == 1 & PLO_BIO_M2_EVL_intersection > 10000 ~ 1,
           TRUE ~ 0
         )
-      )
+      ) %>%
+      dplyr::select(!SHAPE_Area)
     
     file_path <- paste0("Outputs/Data/stanoviste/paseky/", typ_chu, "_", evl_site, "_", hab_code, "_", zakl, "_", aktu, ".gpkg")
     
@@ -181,8 +181,8 @@ for(i in seq_along(evl_codes)){
         dsn = file_path, 
         layer = paste0(typ_chu, "_", evl_site, "_", hab_code, "_", zakl, "_", aktu), 
         driver = "GPKG",
-        quiet = FALSE
-        # delete_dsn už není potřeba, smazali jsme ho ručně o krok výše
+        quiet = FALSE,
+        delete_dsn = TRUE
       )
       
       message(paste("Pro", evl_site, "a", hab_code, "vrstva zapsána."))
@@ -192,3 +192,4 @@ for(i in seq_along(evl_codes)){
     }
   }
 }
+
