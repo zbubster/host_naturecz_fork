@@ -1,12 +1,22 @@
 
-data_orig <- load_vmb(vmb_x = 1)
-data_akt1 <- load_vmb(vmb_x = 2)
-data_akt <- load_vmb(vmb_x = 0)
+# data_orig <- load_vmb(vmb_x = 1)
+# data_akt1 <- load_vmb(vmb_x = 2)
+# data_akt <- load_vmb(vmb_x = 0)
+# 
+# vmb_shp_sjtsk_orig <- data_orig$vmb_shp_sjtsk_orig
+# vmb_shp_sjtsk_a1 <- data_akt1$vmb_shp_sjtsk_a1
+# vmb_pb_x_akt <- data_akt$vmb_pb_x_akt
+# vmb_pb_x_a1 <- data_akt1$vmb_pb_x_a1
 
-vmb_shp_sjtsk_orig <- data_orig$vmb_shp_sjtsk_orig
-vmb_shp_sjtsk_a1 <- data_akt1$vmb_shp_sjtsk_a1
-vmb_pb_x_akt <- data_akt$vmb_pb_x_akt
-vmb_pb_x_a1 <- data_akt1$vmb_pb_x_a1
+sf::st_write(vmb_shp_sjtsk_orig, "vmb_shp_sjtsk_orig.gpkg")
+sf::st_write(vmb_pb_x_akt, "vmb_pb_x_akt.gpkg")
+sf::st_write(vmb_shp_sjtsk_a1, "vmb_shp_sjtsk_a1.gpkg")
+sf::st_write(vmb_pb_x_a1, "vmb_pb_x_a1.gpkg")
+
+vmb_shp_sjtsk_orig <- sf::st_read("../host_data/vmb_shp_sjtsk_orig.gpkg")
+vmb_pb_x_akt <- sf::st_read("../host_data/vmb_pb_x_akt.gpkg")
+vmb_shp_sjtsk_a1 <- sf::st_read("../host_data/vmb_shp_sjtsk_a1.gpkg")
+vmb_pb_x_a1 <- sf::st_read("../host_data/vmb_pb_x_a1.gpkg")
 
 evl_codes <- unique(evl$SITECODE)
 bio_codes <- unique(vmb_pb_x_akt$BIOTOP)
