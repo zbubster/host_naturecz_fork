@@ -3,11 +3,13 @@
 #----------------------------------------------------------#
 
 data_orig <- load_vmb(vmb_x = 1)
+data_akt1 <- load_vmb(vmb_x = 2)
 data_akt <- load_vmb(vmb_x = 0)
 
 vmb_shp_sjtsk_orig <- data_orig$vmb_shp_sjtsk_orig
-
+vmb_shp_sjtsk_a1 <- data_akt1$vmb_shp_sjtsk_a1
 vmb_pb_x_akt <- data_akt$vmb_pb_x_akt
+vmb_pb_x_a1 <- data_akt1$vmb_pb_x_a1
 
 #----------------------------------------------------------#
 # Prostorova funkce pro vypocet pasek ----
