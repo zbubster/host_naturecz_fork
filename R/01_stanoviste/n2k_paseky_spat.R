@@ -11,6 +11,12 @@ vmb_shp_sjtsk_a1 <- data_akt1$vmb_shp_sjtsk_a1
 vmb_pb_x_akt <- data_akt$vmb_pb_x_akt
 vmb_pb_x_a1 <- data_akt1$vmb_pb_x_a1
 
+evl_codes <- unique(evl$SITECODE)
+bio_codes <- unique(vmb_pb_x_akt$BIOTOP)
+
+evl_site <- evl[evl$NAZEV == "Krkonoše",]$SITECODE
+hab_code <- "L1"
+
 #----------------------------------------------------------#
 # Prostorova funkce pro vypocet pasek ----
 #----------------------------------------------------------#
@@ -46,7 +52,12 @@ paseky_spat <- function(
   }
   
   # Inicializace proměnné result pro případ, že se nespustí hlavní blok
-  result <- NULL 
+  result <- NULL
+  
+  # if(substr(hab_code, 1, 1) != 9 | substr(hab_code, 1, 1) != "L") {
+  #   message(hab_code, "-skip")
+  #   return()
+  # }
   
   if(substr(hab_code, 1, 1) == 9 | substr(hab_code, 1, 1) == "L") {
     
@@ -146,30 +157,18 @@ paseky_spat <- function(
   if (!is.null(result) && nrow(result) > 0) {
     result <- janitor::clean_names(result)
   }
-  
+  print(file_path)
   #--------------------------------------------------#
   ## Zápis do GeoPackage ----
   #--------------------------------------------------#
   if (!is.null(result) && nrow(result) > 0) {
-    
-    # 1. EXPLICITNÍ SMAZÁNÍ SOUBORU, POKUD EXISTUJE
-    # Toto vyřeší "GDAL Error 1 ... already exists"
-    if (file.exists(file_path)) {
-      tryCatch({
-        file.remove(file_path)
-        message(paste("Starý soubor smazán:", file_path))
-      }, error = function(e) {
-        stop("Nelze smazat existující soubor. Ujistěte se, že není otevřený v QGIS/ArcGIS! ", e)
-      })
-    }
-    
     # 2. Samotný zápis
     sf::st_write(
       obj = result, 
       dsn = file_path, 
       layer = paste0(typ_chu, "_", evl_site, "_", hab_code, "_", zakl, "_", aktu), 
       driver = "GPKG",
-      quiet = TRUE
+      quiet = FALSE
       # delete_dsn už není potřeba, smazali jsme ho ručně o krok výše
     )
     
@@ -183,45 +182,15 @@ paseky_spat <- function(
 #----------------------------------------------------------#
 # Vypocet GIS vrstvy ----
 #----------------------------------------------------------#
-paseky_spat(sites_habitats_mzchu_test[8,5], sites_habitats_mzchu_test[8,1], typ_chu = "MZCHU")
-
-# Inicializace progress baru
-pb <- progress::progress_bar$new(
-  # Přidal jsem :current/:total pro lepší přehled
-  format = "  Zpracovávám [:bar] :percent | :current/:total | ETA: :eta", 
-  total = nrow(sites_habitats_mzchu_test),
-  clear = FALSE,
-  width = 100
-)
 
 # Loop s "odchytáváním" zpráv
-for(i in 1:nrow(sites_habitats_mzchu_test)) {
-  
-  # Posuneme bar
-  pb$tick()
-  
-  # Spuštění funkce v obalce, která řeší vizuál
-  tryCatch({
-    withCallingHandlers({
-      
-      # Tvoje funkce
-      paseky_spat(sites_habitats_mzchu_test[i,5], sites_habitats_mzchu_test[i,1], typ_chu = "MZCHU")
-      
-    }, message = function(m) {
-      # TOTO JE KLÍČOVÉ:
-      # 1. Vezmeme text zprávy a odstraníme prázdné znaky na konci
-      txt <- trimws(m$message, which = "right")
-      
-      # 2. Vypíšeme ji skrz progress bar (objeví se nad ním)
-      if(nchar(txt) > 0) {
-        pb$message(txt) 
-      }
-      
-      # 3. Potlačíme původní zprávu, aby se nevytiskla 2x
-      invokeRestart("muffleMessage")
-    })
-  }, error = function(e) {
-    # Pokud nastane chyba, vypíšeme ji také hezky přes bar
-    pb$message(paste("!!! CHYBA:", e$message))
-  })
+for(i in seq_along(evl_codes)) {
+  for(j in seq_along(bio_codes)){
+  x <- bio_codes[j]
+  paseky_spat(typ_chu = "EVL",
+              zakl = "VMB1",
+              aktu = "VMB0",
+              evl_site = evl_codes[i],
+              hab_code = x)
+  }
 }
