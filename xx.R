@@ -265,3 +265,8 @@ for (evl_site in evl_codes) {
     log_msg("Pro ", evl_site, " a ", biotop, " vrstva zapsána.")
   }
 }
+
+radky <- readLines(log_file, encoding = "UTF-8", warn = FALSE)
+uzemi_radky <- grep("UZEMI:", radky, value = TRUE)
+kody <- regmatches(uzemi_radky, gregexpr("CZ[0-9]{7}", uzemi_radky))
+all(unique(kody) == unique(evl$SITECODE))
