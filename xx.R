@@ -45,9 +45,6 @@ read_layer <- function(local_path, wfs_url, n2k = NULL) {
 
 evl <- read_layer("Data/Input/EvVyzLok.shp", getfeature_url_evl, n2k = n2k_oop)
 
-evl_codes <- unique(evl$SITECODE)
-bio_codes <- unique(vmb_pb_x_akt$BIOTOP)
-bio_codes <- bio_codes[substr(bio_codes, 1, 1) == "L"]
 
 #########################################
 
@@ -56,18 +53,27 @@ bio_codes <- bio_codes[substr(bio_codes, 1, 1) == "L"]
 # evl_codes <- "CZ0214002"
 # evl_codes <- "CZ0210107"
 
-vmb_aktu <- vmb_pb_x_akt
+vmb_aktu <- vmb_pb_x_a1
 vmb_zakl <- vmb_shp_sjtsk_orig
 
 zakl <- "VMB1"
-aktu <- "VMB0"
+#aktu <- "VMB0"
+aktu <- "VMB2"
 typ_chu <- "EVL"
 
 uzemi <- evl
 
-out_dir <- "Outputs/Data/stanoviste/paseky/for_loop/"
+out_dir <- "Outputs/Data/stanoviste/paseky/for_loop/VMB1_VMB2/"
 if(!dir_exists(out_dir)) dir_create(out_dir)
 
+#########################################
+
+evl_codes <- unique(evl$SITECODE)
+bio_codes_zaḱl <- unique(vmb_zakl$BIOTOP)
+bio_codes_aktu <- unique(vmb_aktu$BIOTOP)
+bio_codes <- unique(c(bio_codes_zaḱl, bio_codes_aktu))
+bio_codes <- bio_codes[substr(bio_codes, 1, 1) == "L"]
+bio_codes
 #########################################
 
 log_file <- paste0(out_dir, "__log_paseky_spat.txt")
@@ -242,7 +248,10 @@ for (evl_site in evl_codes) {
           TRUE ~ 0
         )
       ) %>%
-      dplyr::select(-dplyr::any_of("SHAPE_Area")) # dvakrat SHAPE_Area dela problem
+      dplyr::select(-dplyr::any_of("SHAPE_Area") # dvakrat SHAPE_Area dela problem
+      ) %>%
+      dplyr::select(-dplyr::any_of("SHAPE_AREA")) # dvakrat SHAPE_Area dela problem
+    
     
     # safe check
     if (nrow(result) == 0) {
