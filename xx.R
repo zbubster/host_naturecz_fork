@@ -1,4 +1,23 @@
+packages <- c(
+  "tidyverse", 
+  "sf", 
+  "sp", 
+  "proj4", 
+  "openxlsx",
+  "fuzzyjoin", 
+  "remotes",
+  "ggplot2",
+  "progress",
+  "fs"
+)
 
+# Standardni package
+for (pkg in packages) {
+  if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
+    install.packages(pkg, dependencies = TRUE)
+    library(pkg, character.only = TRUE)
+  }
+}
 
 vmb_shp_sjtsk_orig <- sf::st_read("../host_data/vmb_shp_sjtsk_orig.gpkg")
 vmb_pb_x_akt <- sf::st_read("../host_data/vmb_pb_x_akt.gpkg")
@@ -45,7 +64,6 @@ read_layer <- function(local_path, wfs_url, n2k = NULL) {
 
 evl <- read_layer("Data/Input/EvVyzLok.shp", getfeature_url_evl, n2k = n2k_oop)
 
-
 #########################################
 
 # evl_site <- "CZ0210708"
@@ -53,17 +71,25 @@ evl <- read_layer("Data/Input/EvVyzLok.shp", getfeature_url_evl, n2k = n2k_oop)
 # evl_codes <- "CZ0214002"
 # evl_codes <- "CZ0210107"
 
-vmb_aktu <- vmb_pb_x_a1
-vmb_zakl <- vmb_shp_sjtsk_orig
 
-zakl <- "VMB1"
-#aktu <- "VMB0"
+# VMB 2, aktu
+vmb_aktu <- vmb_pb_x_a1
+# VMB 0, aktu
+vmb_aktu <- vmb_pb_x_akt
+# VMB 1, zakl
+vmb_zakl <- vmb_shp_sjtsk_orig
+# VMB 2, zakl
+vmb_zakl <- vmb_shp_sjtsk_a1
+
+zakl <- "VMB2"
+aktu <- "VMB0"
 aktu <- "VMB2"
 typ_chu <- "EVL"
 
 uzemi <- evl
 
-out_dir <- "Outputs/Data/stanoviste/paseky/for_loop/VMB1_VMB2/"
+out_dir <- "Outputs/Data/stanoviste/paseky/for_loop/VMB2_VMB0/"
+# out_dir <- "Outputs/Data/stanoviste/paseky/for_loop/VMB1_VMB0/"
 if(!dir_exists(out_dir)) dir_create(out_dir)
 
 #########################################
@@ -74,6 +100,11 @@ bio_codes_aktu <- unique(vmb_aktu$BIOTOP)
 bio_codes <- unique(c(bio_codes_zaḱl, bio_codes_aktu))
 bio_codes <- bio_codes[substr(bio_codes, 1, 1) == "L"]
 bio_codes
+
+
+bio_codes_aktu
+bio_codes_zaḱl %in% bio_codes_aktu
+
 #########################################
 
 log_file <- paste0(out_dir, "__log_paseky_spat.txt")
@@ -250,7 +281,11 @@ for (evl_site in evl_codes) {
       ) %>%
       dplyr::select(-dplyr::any_of("SHAPE_Area") # dvakrat SHAPE_Area dela problem
       ) %>%
-      dplyr::select(-dplyr::any_of("SHAPE_AREA")) # dvakrat SHAPE_Area dela problem
+      dplyr::select(-dplyr::any_of("SHAPE_AREA") # dvakrat SHAPE_Area dela problem
+      ) %>%
+      dplyr::select(-dplyr::any_of("Shape_Area") # dvakrat SHAPE_Area dela problem
+      ) %>%
+      dplyr::select(-dplyr::any_of("SHAPE_Leng"))
     
     
     # safe check
