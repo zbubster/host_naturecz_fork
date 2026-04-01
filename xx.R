@@ -82,14 +82,17 @@ vmb_zakl <- vmb_shp_sjtsk_orig
 vmb_zakl <- vmb_shp_sjtsk_a1
 
 zakl <- "VMB2"
+zakl <- "VMB1"
 aktu <- "VMB0"
 aktu <- "VMB2"
+
 typ_chu <- "EVL"
 
 uzemi <- evl
 
-out_dir <- "Outputs/Data/stanoviste/paseky/for_loop/VMB2_VMB0/"
-# out_dir <- "Outputs/Data/stanoviste/paseky/for_loop/VMB1_VMB0/"
+out_dir <- "Outputs/Data/stanoviste/paseky/VMB1_VMB0/"
+# out_dir <- "Outputs/Data/stanoviste/paseky/VMB2_VMB0/"
+# out_dir <- "Outputs/Data/stanoviste/paseky/VMB1_VMB0/"
 if(!dir_exists(out_dir)) dir_create(out_dir)
 
 #########################################
