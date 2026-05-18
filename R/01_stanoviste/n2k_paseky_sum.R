@@ -1,5 +1,20 @@
 # Define folder with your GPKG files
-data_folder <- "Outputs/Data/stanoviste/paseky/MZCHU" 
+data_folder <- "Outputs/Data/stanoviste/paseky/EVL" 
+
+# Nacist data o nejnovejsi kombinaci pasek
+latest_choice <- readr::read_csv(
+  file.path(data_folder, "latest_paseky", "latest_choice.csv"),
+  show_col_types = FALSE
+) %>%
+  dplyr::rename_with(tolower) %>%
+  dplyr::select(-dplyr::any_of(c("...1", "x"))) %>%
+  dplyr::mutate(
+    sitecode = as.character(sitecode),
+    habitat = as.character(habitat),
+    region_id = as.character(region_id),
+    pair = as.character(pair)
+  )
+
 
 # Load all GPKG files into one data frame
 # We drop geometry immediately to save RAM, as we only need the attributes for the summary.
