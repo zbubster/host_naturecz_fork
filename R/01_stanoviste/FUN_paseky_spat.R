@@ -1,11 +1,10 @@
-# Paseky - prostorovy vypocet jedne dvojice VMB
+# Paseky - prostorovy vypocet pro jednu vybranou dvojici VMB
 #
-# Funkce porovna starsi a novejsi VMB pro jednu kombinaci site x habitat.
+# Dostane pouze REGION_ID, pro ktere byla tato dvojice predem vybrana
+# funkci paseky_select_pairs().
 #
 # Vystup:
-#   sf objekt s jednotlivymi pruniky starsiho a novejsiho mapovani.
-#   REGION_ID, DATUM_NEW, DATUM_OLD, PASEKA,
-#   HOLINA a PLO_BIO_M2_INTERSECTION pro dalsi kroky workflow.
+#   sf s jednotlivymi pruniky starsiho a novejsiho mapovani.
 
 paseky_spat <- function(
     hab_code,
@@ -13,27 +12,64 @@ paseky_spat <- function(
     site,
     vmb_old,
     vmb_new,
+    region_ids,
     pair,
     habitat_col = "HABITAT",
     biotop_col = "BIOTOP",
     share_col = "STEJ_PR",
     segment_id_col = "SEGMENT_ID",
-    region_id_col = NULL,
-    date_col_old = NULL,
-    date_col_new = NULL,
-    update_year_col = NULL
+    region_id_col = "REGION_ID",
+    date_col = "DATUM",
+    update_year_col = "ROK_AKT"
 ) {
   
-  # Lesni stanoviste -----------------------------------------------------------
+  region_ids <- base::unique(base::as.character(region_ids))
+  region_ids <- region_ids[!base::is.na(region_ids)]
+  
+  if (base::length(region_ids) == 0) {
+    return(NULL)
+  }
   
   if (!base::substr(base::as.character(hab_code), 1, 1) %in% base::c("9", "L")) {
     return(NULL)
   }
   
-  # Kontrola site --------------------------------------------------------------
-  
   if (!"SITECODE" %in% base::names(site)) {
     base::stop("Vrstva `site` neobsahuje sloupec `SITECODE`.")
+  }
+  
+  required_old <- base::c(
+    habitat_col,
+    biotop_col,
+    share_col,
+    segment_id_col,
+    date_col
+  )
+  
+  required_new <- base::c(
+    biotop_col,
+    share_col,
+    segment_id_col,
+    region_id_col,
+    date_col,
+    update_year_col
+  )
+  
+  missing_old <- required_old[!required_old %in% base::names(vmb_old)]
+  missing_new <- required_new[!required_new %in% base::names(vmb_new)]
+  
+  if (base::length(missing_old) > 0) {
+    base::stop(
+      "V `vmb_old` chybi sloupce: ",
+      base::paste(missing_old, collapse = ", ")
+    )
+  }
+  
+  if (base::length(missing_new) > 0) {
+    base::stop(
+      "V `vmb_new` chybi sloupce: ",
+      base::paste(missing_new, collapse = ", ")
+    )
   }
   
   site_target <- site |>
@@ -45,149 +81,42 @@ paseky_spat <- function(
   
   site_target <- sf::st_make_valid(site_target)
   
+  if (!base::isTRUE(sf::st_crs(vmb_old) == sf::st_crs(site_target))) {
+    vmb_old <- sf::st_transform(vmb_old, sf::st_crs(site_target))
+  }
+  
+  if (!base::isTRUE(sf::st_crs(vmb_new) == sf::st_crs(site_target))) {
+    vmb_new <- sf::st_transform(vmb_new, sf::st_crs(site_target))
+  }
+  
   site_geom <- site_target |>
     sf::st_geometry() |>
     sf::st_union()
   
-  target_crs <- sf::st_crs(site_target)
+  # Starsi mapovani - pouze cilovy habitat ------------------------------------
   
-  if (!base::isTRUE(sf::st_crs(vmb_old) == target_crs)) {
-    vmb_old <- sf::st_transform(vmb_old, target_crs)
-  }
-  
-  if (!base::isTRUE(sf::st_crs(vmb_new) == target_crs)) {
-    vmb_new <- sf::st_transform(vmb_new, target_crs)
-  }
-  
-  # Automaticke dohledani sloupcu, ktere se mezi verzemi VMB mohou lisit ------
-  
-  if (base::is.null(region_id_col)) {
-    region_candidates <- base::c(
-      "REGION_ID",
-      "REGION_ID.x",
-      "REGION_ID_X",
-      "region_id",
-      "region_id.x",
-      "region_id_x"
-    )
-    
-    region_id_col <- region_candidates[
-      region_candidates %in% base::names(vmb_new)
-    ][1]
-  }
-  
-  if (base::is.null(date_col_old)) {
-    date_candidates <- base::c(
-      "DATUM",
-      "DATUM.x",
-      "DATUM_X",
-      "datum",
-      "datum.x",
-      "datum_x"
-    )
-    
-    date_col_old <- date_candidates[
-      date_candidates %in% base::names(vmb_old)
-    ][1]
-  }
-  
-  if (base::is.null(date_col_new)) {
-    date_candidates <- base::c(
-      "DATUM",
-      "DATUM.x",
-      "DATUM_X",
-      "datum",
-      "datum.x",
-      "datum_x"
-    )
-    
-    date_col_new <- date_candidates[
-      date_candidates %in% base::names(vmb_new)
-    ][1]
-  }
-  
-  if (base::is.null(update_year_col)) {
-    update_year_candidates <- base::c(
-      "ROK_AKT.x",
-      "ROK_AKT",
-      "ROK_AKT_X",
-      "rok_akt.x",
-      "rok_akt",
-      "rok_akt_x"
-    )
-    
-    update_year_col <- update_year_candidates[
-      update_year_candidates %in% base::names(vmb_new)
-    ][1]
-  }
-  
-  # Kontrola nutnych atributu --------------------------------------------------
-  
-  required_old <- base::c(
-    habitat_col,
-    biotop_col,
-    share_col,
-    segment_id_col,
-    date_col_old
-  )
-  
-  required_new <- base::c(
-    biotop_col,
-    share_col,
-    segment_id_col,
-    region_id_col,
-    date_col_new,
-    update_year_col
-  )
-  
-  missing_old <- required_old[
-    base::is.na(required_old) |
-      !required_old %in% base::names(vmb_old)
-  ]
-  
-  missing_new <- required_new[
-    base::is.na(required_new) |
-      !required_new %in% base::names(vmb_new)
-  ]
-  
-  if (base::length(missing_old) > 0) {
-    base::stop(
-      "V `vmb_old` chybi potrebne sloupce: ",
-      base::paste(missing_old, collapse = ", ")
-    )
-  }
-  
-  if (base::length(missing_new) > 0) {
-    base::stop(
-      "V `vmb_new` chybi potrebne sloupce: ",
-      base::paste(missing_new, collapse = ", ")
-    )
-  }
-  
-  # Starsi mapovani ------------------------------------------------------------
-  
-  vmb_old_target <- vmb_old |>
+  old_target <- vmb_old |>
     dplyr::filter(
       base::as.character(.data[[habitat_col]]) == base::as.character(hab_code) |
         base::as.character(.data[[biotop_col]]) == base::as.character(hab_code)
     )
   
-  if (base::nrow(vmb_old_target) == 0) {
+  if (base::nrow(old_target) == 0) {
     return(NULL)
   }
   
-  vmb_old_target <- sf::st_filter(
-    x = vmb_old_target,
-    y = site_geom,
+  old_target <- sf::st_filter(
+    old_target,
+    site_geom,
     .predicate = sf::st_intersects
   )
   
-  if (base::nrow(vmb_old_target) == 0) {
+  if (base::nrow(old_target) == 0) {
     return(NULL)
   }
   
-  vmb_old_target <- sf::st_intersection(
-    vmb_old_target,
+  old_target <- sf::st_intersection(
+    old_target,
     site_geom
   ) |>
     sf::st_make_valid() |>
@@ -195,38 +124,41 @@ paseky_spat <- function(
       base::as.character(sf::st_geometry_type(geometry)) %in%
         base::c("POLYGON", "MULTIPOLYGON")
     ) |>
-    dplyr::mutate(
+    dplyr::transmute(
       SEGMENT_ID_OLD = base::as.character(.data[[segment_id_col]]),
       BIOTOP_ORIG = base::as.character(.data[[biotop_col]]),
       STEJ_PR_ORIG = base::as.numeric(.data[[share_col]]),
-      DATUM_OLD = base::as.Date(.data[[date_col_old]])
-    ) |>
-    dplyr::select(
-      SEGMENT_ID_OLD,
-      BIOTOP_ORIG,
-      STEJ_PR_ORIG,
-      DATUM_OLD,
+      DATUM_OLD = base::as.Date(.data[[date_col]]),
       geometry
     )
   
-  if (base::nrow(vmb_old_target) == 0) {
+  if (base::nrow(old_target) == 0) {
     return(NULL)
   }
   
-  # Novejsi mapovani -----------------------------------------------------------
+  # Novejsi mapovani - jen predem vybrane REGION_ID ---------------------------
   
-  vmb_new_target <- sf::st_filter(
-    x = vmb_new,
-    y = site_geom,
+  new_target <- vmb_new |>
+    dplyr::filter(
+      base::as.character(.data[[region_id_col]]) %in% region_ids
+    )
+  
+  if (base::nrow(new_target) == 0) {
+    return(NULL)
+  }
+  
+  new_target <- sf::st_filter(
+    new_target,
+    site_geom,
     .predicate = sf::st_intersects
   )
   
-  if (base::nrow(vmb_new_target) == 0) {
+  if (base::nrow(new_target) == 0) {
     return(NULL)
   }
   
-  vmb_new_target <- sf::st_intersection(
-    vmb_new_target,
+  new_target <- sf::st_intersection(
+    new_target,
     site_geom
   ) |>
     sf::st_make_valid() |>
@@ -234,54 +166,44 @@ paseky_spat <- function(
       base::as.character(sf::st_geometry_type(geometry)) %in%
         base::c("POLYGON", "MULTIPOLYGON")
     ) |>
-    dplyr::mutate(
+    dplyr::transmute(
       SEGMENT_ID_NEW = base::as.character(.data[[segment_id_col]]),
       REGION_ID = base::as.character(.data[[region_id_col]]),
       BIOTOP_UPDATE = base::as.character(.data[[biotop_col]]),
       STEJ_PR_UPDATE = base::as.numeric(.data[[share_col]]),
-      DATUM_NEW = base::as.Date(.data[[date_col_new]]),
-      ROK_AKT_UPDATE = base::as.integer(.data[[update_year_col]])
-    ) |>
-    dplyr::select(
-      SEGMENT_ID_NEW,
-      REGION_ID,
-      BIOTOP_UPDATE,
-      STEJ_PR_UPDATE,
-      DATUM_NEW,
-      ROK_AKT_UPDATE,
+      DATUM_NEW = base::as.Date(.data[[date_col]]),
+      ROK_AKT_UPDATE = base::as.integer(.data[[update_year_col]]),
       geometry
     )
   
-  if (base::nrow(vmb_new_target) == 0) {
+  if (base::nrow(new_target) == 0) {
     return(NULL)
   }
   
-  # Omezeni na segmenty, ktere se opravdu prekryvaji --------------------------
+  # Predvyber prekryvajicich se segmentu ---------------------------------------
   
   hit_list <- sf::st_intersects(
-    vmb_new_target,
-    vmb_old_target
+    new_target,
+    old_target
   )
   
   if (!base::any(base::lengths(hit_list) > 0)) {
     return(NULL)
   }
   
-  new_sub <- vmb_new_target[
+  new_sub <- new_target[
     base::lengths(hit_list) > 0,
   ]
   
-  old_index <- base::sort(
-    base::unique(
-      base::unlist(hit_list)
-    )
-  )
-  
-  old_sub <- vmb_old_target[
-    old_index,
+  old_sub <- old_target[
+    base::sort(
+      base::unique(
+        base::unlist(hit_list)
+      )
+    ),
   ]
   
-  # Vypocet pasek -------------------------------------------------------------
+  # Finalni prunik -------------------------------------------------------------
   
   result <- sf::st_intersection(
     new_sub,
@@ -304,12 +226,12 @@ paseky_spat <- function(
         TRUE ~ 0L
       ),
       
-      area_intersection_m2 = units::drop_units(
+      AREA_INTERSECTION_M2 = units::drop_units(
         sf::st_area(geometry)
       ),
       
       PLO_BIO_M2_INTERSECTION =
-        area_intersection_m2 *
+        AREA_INTERSECTION_M2 *
         STEJ_PR_ORIG / 100 *
         STEJ_PR_UPDATE / 100,
       

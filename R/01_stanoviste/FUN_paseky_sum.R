@@ -1,19 +1,17 @@
 # Paseky - sumarizace pro jednu kombinaci site x habitat
 #
 # Vstup:
-#   paseky_selected - vysledek paseky_latest(); muze obsahovat libovolny
-#                     pocet aktualizacnich okrsku a ruzne dvojice VMB
+#   paseky_detail - sf/data.frame s vysledky pouze z predem vybranych
+#                   dvojic VMB pro jednotlive REGION_ID.
 #
 # Vystup:
-#   tibble s jednim radkem pro site x habitat
+#   tibble s jednim radkem pro site x habitat.
 
 paseky_sum <- function(
     hab_code,
     site_code,
-    paseky_selected
+    paseky_detail
 ) {
-  
-  # Pro nelesni stanoviste nejsou pasekove parametry relevantni ---------------
   
   if (!base::substr(base::as.character(hab_code), 1, 1) %in% base::c("9", "L")) {
     return(
@@ -27,11 +25,9 @@ paseky_sum <- function(
     )
   }
   
-  # Lesni stanoviste bez nalezene paseky --------------------------------------
-  
   if (
-    base::is.null(paseky_selected) ||
-    base::nrow(paseky_selected) == 0
+    base::is.null(paseky_detail) ||
+    base::nrow(paseky_detail) == 0
   ) {
     return(
       dplyr::tibble(
@@ -44,27 +40,13 @@ paseky_sum <- function(
     )
   }
   
-  required_cols <- base::c(
-    "SITECODE",
-    "HABITAT_CODE",
-    "PASEKA",
-    "HOLINA",
-    "PLO_BIO_M2_INTERSECTION",
-    "SEGMENT_ID_OLD"
-  )
-  
-  missing_cols <- required_cols[
-    !required_cols %in% base::names(paseky_selected)
-  ]
-  
-  if (base::length(missing_cols) > 0) {
-    base::stop(
-      "V `paseky_selected` chybi potrebne sloupce: ",
-      base::paste(missing_cols, collapse = ", ")
-    )
+  if (base::inherits(paseky_detail, "sf")) {
+    target <- sf::st_drop_geometry(paseky_detail)
+  } else {
+    target <- paseky_detail
   }
   
-  target <- paseky_selected |>
+  target <- target |>
     dplyr::filter(
       SITECODE == site_code,
       HABITAT_CODE == hab_code
