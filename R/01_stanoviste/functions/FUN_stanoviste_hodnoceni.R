@@ -1,27 +1,16 @@
 # FUN_stanoviste_hodnoceni.R
 #
-# Hodnocení stavu stanoviště pro nový workflow.
+# Hodnocení stavu stanoviště.
 #
 # Funkce přebírá široký výstup z:
 #
 #   stanoviste_eval()
 #   nebo budoucího stanoviste_batch()
 #
-# a aplikuje pravidla původního skriptu:
-#
-#   n2k_stanoviste_srovnani.R
-#
 # na dva indikátory, které určují celkový stav:
 #
 #   - ROZLOHA
 #   - KVALITA
-#
-# Funkce:
-#   - nic nenačítá z disku,
-#   - nic nezapisuje,
-#   - nepoužívá .GlobalEnv,
-#   - neřeší trend mezi dvěma obdobími,
-#   - neřeší systémový export.
 #
 # Výstup:
 #   standardně původní `results` rozšířený o hodnocení stavu.

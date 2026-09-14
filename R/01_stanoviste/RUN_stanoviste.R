@@ -247,7 +247,7 @@ base::message(
 
 base::print(
   stanoviste_inputs$manifest,
-  n = base::Inf
+  n = Inf
 )
 
 
