@@ -34,13 +34,6 @@
 #   )
 #
 # `detail` obsahuje přesný limit, jeho zdroj a stav pro ROZLOHA/KVALITA.
-#
-# POZOR:
-# Původní n2k_stanoviste_srovnani.R porovnává ROZLOHA v hektarech přímo
-# s MINIMISIZE. Výchozí minimisize_unit = "ha" proto zachovává tuto logiku.
-# Pokud tabulka `minimisize` v novém workflow obsahuje hodnoty v m2,
-# je nutné použít minimisize_unit = "m2".
-
 
 stanoviste_hodnoceni <- function(
     results,
@@ -49,7 +42,6 @@ stanoviste_hodnoceni <- function(
     site_context,
     sdo_ii_sites,
     tolerance = 0.05,
-    minimisize_unit = base::c("ha", "m2"),
     non_evaluated_habitats = base::c(
       "91T0",
       "3140",
@@ -58,10 +50,6 @@ stanoviste_hodnoceni <- function(
     ),
     return_detail = FALSE
 ) {
-  
-  minimisize_unit <- base::match.arg(
-    minimisize_unit
-  )
   
   # ===========================================================================
   # 1. Pomocné funkce
@@ -431,13 +419,6 @@ stanoviste_hodnoceni <- function(
       },
       .groups = "drop"
     )
-  
-  if (minimisize_unit == "m2") {
-    minimisize_eval <- minimisize_eval |>
-      dplyr::mutate(
-        MINIMISIZE = MINIMISIZE / 10000
-      )
-  }
   
   
   # ===========================================================================
