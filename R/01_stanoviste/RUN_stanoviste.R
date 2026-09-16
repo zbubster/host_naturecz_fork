@@ -1,14 +1,12 @@
 # RUN_stanoviste.R
 #
-# Spouštěcí skript workflow pro jednu kombinaci site x habitat.
+# Spouštěcí skript nového workflow hodnocení stanovišť.
 #
 # Existující R/00_config zůstává zdrojem dat.
 # stanoviste_load_inputs.R jej načte do izolovaného prostředí a vytvoří
-# strukturu očekávanou funkcí stanoviste_eval().
+# strukturu očekávanou funkcemi stanoviste_eval() a stanoviste_batch().
 #
-# Spusteni Interaktivne | Terminal
-#
-# Interaktivně:
+# Interaktivně - jedna kombinace:
 #
 #   base::source("R/01_stanoviste/RUN_stanoviste.R")
 #
@@ -19,6 +17,22 @@
 #   )
 #
 #   x$result
+#
+# Interaktivně - batch:
+#
+#   targets <- tibble::tibble(
+#     SITECODE = c("CZ...", "CZ..."),
+#     HABITAT_CODE = c("9130", "6510")
+#   )
+#
+#   batch <- run_stanoviste_batch(
+#     targets = targets,
+#     parallel = TRUE,
+#     workers = 8
+#   )
+#
+#   batch$results
+#   batch$log
 #
 # Z příkazové řádky z kořene repozitáře:
 #
@@ -31,7 +45,6 @@
 
 get_script_path <- function() {
   
-  # source(...)
   source_path <- base::tryCatch(
     base::sys.frame(1)$ofile,
     error = function(e) NULL
@@ -51,7 +64,6 @@ get_script_path <- function() {
     )
   }
   
-  # Rscript ...
   args_all <- base::commandArgs(
     trailingOnly = FALSE
   )
@@ -83,10 +95,6 @@ script_path <- get_script_path()
 
 if (!base::is.null(script_path)) {
   
-  # RUN_stanoviste.R leží v:
-  #   <repo>/R/01_stanoviste/RUN_stanoviste.R
-  #
-  # takže kořen repozitáře je o dvě úrovně výš.
   repo_root <- base::normalizePath(
     base::file.path(
       base::dirname(script_path),
@@ -99,8 +107,6 @@ if (!base::is.null(script_path)) {
   
 } else {
   
-  # Fallback pro nestandardní interaktivní spuštění.
-  # Předpokládá, že working directory je kořen repozitáře.
   repo_root <- base::normalizePath(
     ".",
     winslash = "/",
@@ -153,7 +159,8 @@ function_files <- base::c(
   "FUN_stanoviste_paseky.R",
   "FUN_stanoviste_klicove_parametry.R",
   "FUN_stanoviste_druhy.R",
-  "FUN_stanoviste_prostor.R"
+  "FUN_stanoviste_prostor.R",
+  "FUN_stanoviste_batch.R"
 )
 
 function_paths <- base::file.path(
@@ -224,18 +231,6 @@ base::invisible(
 # =============================================================================
 # 5. Načtení všech vstupů
 # =============================================================================
-#
-# stanoviste_load_inputs.R načte existující configy:
-#
-#   R/00_config/00_n2k_config.R
-#   R/00_config/02_n2k_data_druhy.R
-#   R/00_config/03_n2k_data_stanoviste.R
-#   R/00_config/load_vmb.R
-#
-# a převede jejich objekty do:
-#
-#   stanoviste_inputs$data
-#   stanoviste_inputs$tables
 
 stanoviste_inputs <- load_stanoviste_inputs(
   repo_root = repo_root
@@ -247,7 +242,7 @@ base::message(
 
 base::print(
   stanoviste_inputs$manifest,
-  n = Inf
+  n = base::Inf
 )
 
 
@@ -272,8 +267,50 @@ run_stanoviste_once <- function(
 
 
 # =============================================================================
-# 7. Volitelné spuštění z příkazové řádky
+# 7. Batch výpočet site x habitat
 # =============================================================================
+#
+# `targets` musí obsahovat minimálně:
+#   SITECODE
+#   HABITAT_CODE
+#
+# Společné vstupy se předávají z `stanoviste_inputs`; při batch běhu se tedy
+# znovu nenačítají.
+
+run_stanoviste_batch <- function(
+    targets,
+    parallel = TRUE,
+    workers = NULL,
+    parallel_plan = NULL,
+    future_seed = TRUE,
+    return_components = FALSE,
+    stop_on_error = FALSE
+) {
+  
+  stanoviste_batch(
+    targets = targets,
+    data = stanoviste_inputs$data,
+    tables = stanoviste_inputs$tables,
+    parallel = parallel,
+    workers = workers,
+    parallel_plan = parallel_plan,
+    future_seed = future_seed,
+    return_components = return_components,
+    stop_on_error = stop_on_error
+  )
+}
+
+
+# =============================================================================
+# 8. Volitelné spuštění jedné kombinace z příkazové řádky
+# =============================================================================
+#
+# CLI zatím zachovává původní jednoduchý režim:
+#
+#   Rscript R/01_stanoviste/RUN_stanoviste.R <site_code> <hab_code>
+#
+# Batch se spouští přes run_stanoviste_batch(). Až bude definitivní zdroj
+# target tabulky, lze CLI rozšířit i o batch režim.
 
 args <- base::commandArgs(
   trailingOnly = TRUE
