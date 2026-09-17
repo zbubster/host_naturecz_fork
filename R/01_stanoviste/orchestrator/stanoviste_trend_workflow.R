@@ -1,33 +1,21 @@
 # stanoviste_trend_workflow.R
 #
-# Orchestrace výpočtu trendu mezi aktuálním během nového workflow
-# a historickým wide výstupem starého workflow.
+# Univerzalni wrapper trendove vetve.
 #
-# Očekává načtené funkce:
-#   stanoviste_load_previous()
-#   stanoviste_hodnoceni()
-#   stanoviste_trend()
+# Umi porovnat:
+#   1) current z noveho workflow + stary historicky CSV,
+#   2) current + previous vypoctene oba novym workflow,
+#   3) dva jiz vyhodnocene wide datasety.
 #
-# `current_results` mají být SUROVÉ široké výsledky z:
-#   stanoviste_eval()
-#   nebo stanoviste_batch()
+# `current_results` a `previous_results` mohou byt raw i evaluated.
+# Pokud chybi sloupce hodnoceni, wrapper zavola stanoviste_hodnoceni().
 #
-# `previous_source` může být např.:
-#
-#   "Outputs/Data/stanoviste/results_habitats_24_20250806.csv"
-#
-# nebo přímo:
-#
-#   "https://github.com/BiodivMonCZ/host_naturecz/blob/main/Outputs/Data/stanoviste/results_habitats_24_20250806.csv"
-#
-# Historické i aktuální období se nejdřív vyhodnotí stejnou funkcí
-# stanoviste_hodnoceni(). Teprve potom se porovnají funkcí stanoviste_trend().
-#
-# Tím jsou obě období hodnocena podle stejné sady pravidel a limitů.
+# Pro previous lze misto objektu pouzit `previous_source`.
 
 stanoviste_trend_workflow <- function(
     current_results,
-    previous_source,
+    previous_results = NULL,
+    previous_source = NULL,
     limits,
     minimisize,
     site_context,
@@ -35,10 +23,6 @@ stanoviste_trend_workflow <- function(
     tolerance = 0.05,
     return_components = FALSE
 ) {
-  
-  # ---------------------------------------------------------------------------
-  # 1. Kontrola dostupnosti funkcí
-  # ---------------------------------------------------------------------------
   
   required_functions <- base::c(
     "stanoviste_load_previous",
@@ -62,7 +46,7 @@ stanoviste_trend_workflow <- function(
   
   if (base::length(missing_functions) > 0) {
     base::stop(
-      "stanoviste_trend_workflow(): nejsou načteny funkce: ",
+      "stanoviste_trend_workflow(): nejsou nacteny funkce: ",
       base::paste(
         missing_functions,
         collapse = ", "
@@ -71,37 +55,68 @@ stanoviste_trend_workflow <- function(
     )
   }
   
-  # ---------------------------------------------------------------------------
-  # 2. Historický široký výstup
-  # ---------------------------------------------------------------------------
+  if (
+    !base::is.null(previous_results) &&
+    !base::is.null(previous_source)
+  ) {
+    base::stop(
+      "stanoviste_trend_workflow(): zadej pouze jedno z ",
+      "`previous_results` nebo `previous_source`.",
+      call. = FALSE
+    )
+  }
   
-  previous_raw <- stanoviste_load_previous(
-    source = previous_source
+  if (
+    base::is.null(previous_results) &&
+    base::is.null(previous_source)
+  ) {
+    base::stop(
+      "stanoviste_trend_workflow(): je nutne zadat ",
+      "`previous_results` nebo `previous_source`.",
+      call. = FALSE
+    )
+  }
+  
+  if (!base::is.null(previous_source)) {
+    previous_raw <- stanoviste_load_previous(
+      source = previous_source
+    )
+  } else {
+    previous_raw <- previous_results
+  }
+  
+  is_evaluated <- function(x) {
+    base::all(
+      base::c(
+        "CELKOVE_HODNOCENI",
+        "ROZLOHA_STAV",
+        "KVALITA_STAV"
+      ) %in% base::names(x)
+    )
+  }
+  
+  evaluate_if_needed <- function(x) {
+    
+    if (is_evaluated(x)) {
+      return(x)
+    }
+    
+    stanoviste_hodnoceni(
+      results = x,
+      limits = limits,
+      minimisize = minimisize,
+      site_context = site_context,
+      sdo_ii_sites = sdo_ii_sites
+    )
+  }
+  
+  current_evaluated <- evaluate_if_needed(
+    current_results
   )
   
-  # ---------------------------------------------------------------------------
-  # 3. Hodnocení obou období stejnými pravidly
-  # ---------------------------------------------------------------------------
-  
-  previous_evaluated <- stanoviste_hodnoceni(
-    results = previous_raw,
-    limits = limits,
-    minimisize = minimisize,
-    site_context = site_context,
-    sdo_ii_sites = sdo_ii_sites
+  previous_evaluated <- evaluate_if_needed(
+    previous_raw
   )
-  
-  current_evaluated <- stanoviste_hodnoceni(
-    results = current_results,
-    limits = limits,
-    minimisize = minimisize,
-    site_context = site_context,
-    sdo_ii_sites = sdo_ii_sites
-  )
-  
-  # ---------------------------------------------------------------------------
-  # 4. Trend
-  # ---------------------------------------------------------------------------
   
   trend_result <- stanoviste_trend(
     current = current_evaluated,
@@ -110,12 +125,7 @@ stanoviste_trend_workflow <- function(
     return_detail = return_components
   )
   
-  # ---------------------------------------------------------------------------
-  # 5. Výstup
-  # ---------------------------------------------------------------------------
-  
   if (base::isTRUE(return_components)) {
-    
     return(
       base::list(
         result = trend_result$result,
