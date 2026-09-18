@@ -395,7 +395,7 @@ load_stanoviste_inputs <- function(
   
   red_list_res <- resolve_object(
     candidates = base::c(
-      "red_list_species"
+      "redlist_species"
     ),
     label = "data druhů červeného seznamu"
   )
