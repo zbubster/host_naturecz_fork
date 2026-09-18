@@ -349,7 +349,7 @@ po  <- read_layer("Data/Input/PtaciObl.shp", getfeature_url_po,  n2k = n2k_oop)
 ## Cesta k lokalnim datum ---- 
 #--------------------------------------------------#
 
-slozka_lokal <- "C:/Users/jonas.gaigr/Documents/host_data/"
+slozka_lokal <- "/auto/brno2/brno2/zbubster/host_data/"
 
 #----------------------------------------------------------#
 # Vlastní funkce na úpravu dat ----

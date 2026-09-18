@@ -234,7 +234,7 @@ base::message(
 
 base::print(
   stanoviste_inputs$manifest,
-  n = base::Inf
+  n = Inf
 )
 
 
@@ -257,6 +257,26 @@ run_stanoviste_once <- function(
   )
 }
 
+# Rana - Hradek
+run_stanoviste_once(
+  hab_code = "6210",
+  site_code = "CZ0424033",
+  return_components = TRUE
+)
+
+# Hradiste
+run_stanoviste_once(
+  hab_code = "6210",
+  site_code = "CZ0414127",
+  return_components = TRUE
+)
+
+# Hradiste Tilio-Acerion
+run_stanoviste_once(
+  hab_code = "9180",
+  site_code = "CZ0414127",
+  return_components = TRUE
+)
 
 # =============================================================================
 # 8. Batch raw vypoctu
@@ -456,7 +476,7 @@ run_stanoviste_workflow <- function(
     
     base::print(
       export_manifest,
-      n = base::Inf
+      n = Inf
     )
   }
   
@@ -479,6 +499,38 @@ run_stanoviste_workflow <- function(
   
   out
 }
+
+
+# Hradiste a vsechny habitaty
+targets <- base::data.frame(
+  SITECODE = base::rep(
+    "CZ0414127",
+    13
+  ),
+  HABITAT_CODE = base::c(
+    "3150",
+    "40A0",
+    "5130",
+    "6210",
+    "6230",
+    "6430",
+    "6510",
+    "8230",
+    "8310",
+    "9130",
+    "9180",
+    "91E0",
+    "91I0"
+  )
+)
+
+test_result <- run_stanoviste_workflow(
+  targets = targets,
+  parallel = FALSE,
+  write_results = TRUE,
+  stop_on_error = FALSE,
+  return_components = TRUE
+)
 
 
 # =============================================================================
