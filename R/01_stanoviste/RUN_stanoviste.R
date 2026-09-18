@@ -1,6 +1,9 @@
 # RUN_stanoviste.R
 #
-# Vstupni bod noveho workflow stanovist.
+# Vstupni bod hlavniho workflow hodnoceni stanovist.
+#
+# Paseky jsou v hlavnim workflow hotovy vstup (`tables$paseky`).
+# Funkce pro jejich vypocet se zde nesourcuji; budou mit samostatny runner.
 #
 # Urovne:
 #
@@ -15,9 +18,6 @@
 #       -> hodnoceni stavu
 #       -> volitelne trend
 #       -> volitelne export
-#
-# Runner pouze orchestruje. Vypocetni, trendova ani zapisovaci logika
-# neni implementovana primo zde.
 
 
 # =============================================================================
@@ -71,6 +71,7 @@ get_script_path <- function() {
   
   NULL
 }
+
 
 script_path <- get_script_path()
 
@@ -164,16 +165,12 @@ source_required <- function(
 
 
 # =============================================================================
-# 3. Vypocetni funkce
+# 3. Vypocetni funkce hlavniho workflow
 # =============================================================================
 
 source_required(
   functions_dir,
   base::c(
-    "FUN_paseky_select_pairs.R",
-    "FUN_paseky_spat.R",
-    "FUN_paseky_sum.R",
-    "FUN_stanoviste_paseky.R",
     "FUN_stanoviste_klicove_parametry.R",
     "FUN_stanoviste_druhy.R",
     "FUN_stanoviste_prostor.R",
@@ -229,7 +226,7 @@ stanoviste_hodnoceni_inputs <- stanoviste_get_hodnoceni_inputs(
 )
 
 base::message(
-  "\nMapovani vstupu noveho workflow:"
+  "\nMapovani vstupu hlavniho workflow:"
 )
 
 base::print(
