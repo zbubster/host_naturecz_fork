@@ -313,7 +313,7 @@ run_paseky_workflow <- function(
 
   base::print(
     inputs$manifest,
-    n = base::Inf
+    n = Inf
   )
 
   # ---------------------------------------------------------------------------
@@ -352,7 +352,7 @@ run_paseky_workflow <- function(
 
     base::print(
       export_manifest,
-      n = base::Inf
+      n = Inf
     )
   }
 
