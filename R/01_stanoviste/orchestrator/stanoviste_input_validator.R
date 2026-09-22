@@ -1,17 +1,8 @@
-# Stanoviste - validace vstupu orchestratoru
+# stanoviste_input_validator.R
 #
-# stanoviste_validate_inputs()
-#
-# Funkce overuje PRED samotnym vypoctem:
-#   - zakladni argumenty,
-#   - strukturu listu data a tables,
-#   - dostupnost potrebnych funkci,
-#   - typy vstupnich objektu,
-#   - pritomnost pozadovanych sloupcu,
-#   - existenci site_code.
+# Validace vstupu hlavniho workflow hodnoceni stanovist.
 #
 # Pri uspechu vraci invisible(TRUE).
-# Pri chybe ukonci vypocet informativni chybovou hlaskou.
 
 stanoviste_validate_inputs <- function(
     hab_code,
@@ -24,7 +15,10 @@ stanoviste_validate_inputs <- function(
   # Pomocne validacni funkce
   # ---------------------------------------------------------------------------
   
-  require_sf <- function(x, object_name) {
+  require_sf <- function(
+    x,
+    object_name
+  ) {
     
     if (!base::inherits(x, "sf")) {
       base::stop(
@@ -38,7 +32,11 @@ stanoviste_validate_inputs <- function(
     base::invisible(TRUE)
   }
   
-  require_table <- function(x, object_name) {
+  
+  require_table <- function(
+    x,
+    object_name
+  ) {
     
     if (!base::is.data.frame(x)) {
       base::stop(
@@ -52,7 +50,12 @@ stanoviste_validate_inputs <- function(
     base::invisible(TRUE)
   }
   
-  require_cols <- function(x, cols, object_name) {
+  
+  require_cols <- function(
+    x,
+    cols,
+    object_name
+  ) {
     
     missing_cols <- base::setdiff(
       cols,
@@ -64,7 +67,10 @@ stanoviste_validate_inputs <- function(
         "stanoviste_validate_inputs(): v `",
         object_name,
         "` chybi sloupce: ",
-        base::paste(missing_cols, collapse = ", "),
+        base::paste(
+          missing_cols,
+          collapse = ", "
+        ),
         call. = FALSE
       )
     }
@@ -79,7 +85,9 @@ stanoviste_validate_inputs <- function(
   if (
     base::length(hab_code) != 1 ||
     base::is.na(hab_code) ||
-    !base::nzchar(base::as.character(hab_code))
+    !base::nzchar(
+      base::as.character(hab_code)
+    )
   ) {
     base::stop(
       "stanoviste_validate_inputs(): `hab_code` musi byt jedna neprazdna hodnota.",
@@ -90,7 +98,9 @@ stanoviste_validate_inputs <- function(
   if (
     base::length(site_code) != 1 ||
     base::is.na(site_code) ||
-    !base::nzchar(base::as.character(site_code))
+    !base::nzchar(
+      base::as.character(site_code)
+    )
   ) {
     base::stop(
       "stanoviste_validate_inputs(): `site_code` musi byt jedna neprazdna hodnota.",
@@ -98,8 +108,13 @@ stanoviste_validate_inputs <- function(
     )
   }
   
-  hab_code <- base::as.character(hab_code)
-  site_code <- base::as.character(site_code)
+  hab_code <- base::as.character(
+    hab_code
+  )
+  
+  site_code <- base::as.character(
+    site_code
+  )
   
   if (!base::is.list(data)) {
     base::stop(
@@ -134,10 +149,6 @@ stanoviste_validate_inputs <- function(
   # ---------------------------------------------------------------------------
   
   required_functions <- base::c(
-    "paseky_select_pairs",
-    "paseky_spat",
-    "paseky_sum",
-    "stanoviste_paseky",
     "stanoviste_klic",
     "stanoviste_druhy",
     "stanoviste_prostor"
@@ -160,7 +171,10 @@ stanoviste_validate_inputs <- function(
   if (base::length(missing_functions) > 0) {
     base::stop(
       "stanoviste_validate_inputs(): nejsou nacteny potrebne funkce: ",
-      base::paste(missing_functions, collapse = ", "),
+      base::paste(
+        missing_functions,
+        collapse = ", "
+      ),
       call. = FALSE
     )
   }
@@ -172,11 +186,7 @@ stanoviste_validate_inputs <- function(
   required_data <- base::c(
     "site",
     "vmb",
-    "czechia_line",
-    "vmb1_base",
-    "vmb2_base",
-    "vmb2_update",
-    "vmb0_update"
+    "czechia_line"
   )
   
   required_tables <- base::c(
@@ -185,9 +195,7 @@ stanoviste_validate_inputs <- function(
     "red_list_species",
     "invasive_species",
     "expansive_species",
-    "vmb1_meta",
-    "vmb2_meta",
-    "vmb0_meta"
+    "paseky"
   )
   
   missing_data <- base::setdiff(
@@ -203,7 +211,10 @@ stanoviste_validate_inputs <- function(
   if (base::length(missing_data) > 0) {
     base::stop(
       "stanoviste_validate_inputs(): v `data` chybi: ",
-      base::paste(missing_data, collapse = ", "),
+      base::paste(
+        missing_data,
+        collapse = ", "
+      ),
       call. = FALSE
     )
   }
@@ -211,7 +222,10 @@ stanoviste_validate_inputs <- function(
   if (base::length(missing_tables) > 0) {
     base::stop(
       "stanoviste_validate_inputs(): v `tables` chybi: ",
-      base::paste(missing_tables, collapse = ", "),
+      base::paste(
+        missing_tables,
+        collapse = ", "
+      ),
       call. = FALSE
     )
   }
@@ -235,7 +249,10 @@ stanoviste_validate_inputs <- function(
   if (base::length(null_data) > 0) {
     base::stop(
       "stanoviste_validate_inputs(): tyto polozky v `data` jsou NULL: ",
-      base::paste(null_data, collapse = ", "),
+      base::paste(
+        null_data,
+        collapse = ", "
+      ),
       call. = FALSE
     )
   }
@@ -243,7 +260,10 @@ stanoviste_validate_inputs <- function(
   if (base::length(null_tables) > 0) {
     base::stop(
       "stanoviste_validate_inputs(): tyto polozky v `tables` jsou NULL: ",
-      base::paste(null_tables, collapse = ", "),
+      base::paste(
+        null_tables,
+        collapse = ", "
+      ),
       call. = FALSE
     )
   }
@@ -252,26 +272,25 @@ stanoviste_validate_inputs <- function(
   # 4. Prostorove vstupy
   # ---------------------------------------------------------------------------
   
-  base::lapply(
-    base::c(
-      "site",
-      "vmb",
-      "vmb1_base",
-      "vmb2_base",
-      "vmb2_update",
-      "vmb0_update"
-    ),
-    FUN = function(x) {
-      require_sf(
-        data[[x]],
-        base::paste0("data$", x)
-      )
-    }
+  require_sf(
+    data$site,
+    "data$site"
+  )
+  
+  require_sf(
+    data$vmb,
+    "data$vmb"
   )
   
   if (
-    !base::inherits(data$czechia_line, "sf") &&
-    !base::inherits(data$czechia_line, "sfc")
+    !base::inherits(
+      data$czechia_line,
+      "sf"
+    ) &&
+    !base::inherits(
+      data$czechia_line,
+      "sfc"
+    )
   ) {
     base::stop(
       "stanoviste_validate_inputs(): `data$czechia_line` musi byt sf nebo sfc objekt.",
@@ -293,7 +312,12 @@ stanoviste_validate_inputs <- function(
     "data$site"
   )
   
-  if (!site_code %in% base::as.character(data$site$SITECODE)) {
+  if (
+    !site_code %in%
+    base::as.character(
+      data$site$SITECODE
+    )
+  ) {
     base::stop(
       "stanoviste_validate_inputs(): site `",
       site_code,
@@ -303,7 +327,7 @@ stanoviste_validate_inputs <- function(
   }
   
   # ---------------------------------------------------------------------------
-  # 6. Aktualni VMB - spolecne potreby KLIC / DRUHY / PROSTOR
+  # 6. Aktualni VMB - KLIC / DRUHY / PROSTOR
   # ---------------------------------------------------------------------------
   
   require_cols(
@@ -320,6 +344,7 @@ stanoviste_validate_inputs <- function(
       "KVALITA",
       "MD",
       "DATUM",
+      "ROK_AKT.y",
       "FSB_EVAL",
       "BIOTOP_SEZ"
     ),
@@ -327,61 +352,7 @@ stanoviste_validate_inputs <- function(
   )
   
   # ---------------------------------------------------------------------------
-  # 7. Pasekove prostorove vrstvy
-  # ---------------------------------------------------------------------------
-  
-  require_cols(
-    data$vmb1_base,
-    base::c(
-      "HABITAT",
-      "BIOTOP",
-      "STEJ_PR",
-      "SEGMENT_ID",
-      "DATUM"
-    ),
-    "data$vmb1_base"
-  )
-  
-  require_cols(
-    data$vmb2_base,
-    base::c(
-      "HABITAT",
-      "BIOTOP",
-      "STEJ_PR",
-      "SEGMENT_ID",
-      "DATUM"
-    ),
-    "data$vmb2_base"
-  )
-  
-  require_cols(
-    data$vmb2_update,
-    base::c(
-      "BIOTOP",
-      "STEJ_PR",
-      "SEGMENT_ID",
-      "REGION_ID",
-      "DATUM",
-      "ROK_AKT"
-    ),
-    "data$vmb2_update"
-  )
-  
-  require_cols(
-    data$vmb0_update,
-    base::c(
-      "BIOTOP",
-      "STEJ_PR",
-      "SEGMENT_ID",
-      "REGION_ID",
-      "DATUM",
-      "ROK_AKT"
-    ),
-    "data$vmb0_update"
-  )
-  
-  # ---------------------------------------------------------------------------
-  # 8. Lookup tabulky
+  # 7. Lookup tabulky
   # ---------------------------------------------------------------------------
   
   require_table(
@@ -413,7 +384,7 @@ stanoviste_validate_inputs <- function(
   )
   
   # ---------------------------------------------------------------------------
-  # 9. Druhova prostorova data
+  # 8. Druhova prostorova data
   # ---------------------------------------------------------------------------
   
   require_sf(
@@ -459,32 +430,53 @@ stanoviste_validate_inputs <- function(
   )
   
   # ---------------------------------------------------------------------------
-  # 10. Metadata VMB
+  # 9. Hotova tabulka pasek
   # ---------------------------------------------------------------------------
   
-  base::lapply(
-    base::c(
-      "vmb1_meta",
-      "vmb2_meta",
-      "vmb0_meta"
-    ),
-    FUN = function(x) {
-      
-      require_table(
-        tables[[x]],
-        base::paste0("tables$", x)
-      )
-      
-      require_cols(
-        tables[[x]],
-        base::c(
-          "REGION_ID",
-          "DATUM"
-        ),
-        base::paste0("tables$", x)
-      )
-    }
+  require_table(
+    tables$paseky,
+    "tables$paseky"
   )
+  
+  require_cols(
+    tables$paseky,
+    base::c(
+      "SITECODE",
+      "HABITAT_CODE",
+      "ROZLOHA_PASEKY",
+      "ROZLOHA_HOLINY",
+      "POCET_SEGMENTU_PASEKY"
+    ),
+    "tables$paseky"
+  )
+  
+  paseky_target <- tables$paseky |>
+    dplyr::filter(
+      base::as.character(SITECODE) == site_code,
+      base::as.character(HABITAT_CODE) == hab_code
+    )
+  
+  if (base::nrow(paseky_target) == 0) {
+    base::stop(
+      "stanoviste_validate_inputs(): v `tables$paseky` chybi kombinace ",
+      site_code,
+      " x ",
+      hab_code,
+      ". Tabulka pasek je pravdepodobne neaktualni nebo nekompletni.",
+      call. = FALSE
+    )
+  }
+  
+  if (base::nrow(paseky_target) > 1) {
+    base::stop(
+      "stanoviste_validate_inputs(): v `tables$paseky` je kombinace ",
+      site_code,
+      " x ",
+      hab_code,
+      " vicekrat.",
+      call. = FALSE
+    )
+  }
   
   base::invisible(TRUE)
 }

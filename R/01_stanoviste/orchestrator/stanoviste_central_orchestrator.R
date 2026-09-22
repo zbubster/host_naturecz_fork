@@ -1,17 +1,13 @@
-# Stanoviste - centralni orchestrator
+# stanoviste_central_orchestrator.R
 #
-# stanoviste_eval()
+# Centralni orchestrator hlavniho workflow hodnoceni stanovist.
 #
-# Uloha:
-#   - zavolat validaci vstupu,
-#   - spocitat paseky,
-#   - spustit klicove, druhove a prostorove parametry,
-#   - overit konzistenci dilcich vystupu,
-#   - spojit je do jednoho radku.
-#
-# Pred zavolanim musi byt nactena:
-#   stanoviste_validate_inputs()
-# a vsechny vypocetni funkce.
+# stanoviste_eval():
+#   - zavola validaci vstupu,
+#   - vybere odpovidajici radek z hotove tabulky pasek,
+#   - spusti klicove, druhove a prostorove parametry,
+#   - overi konzistenci dilcich vystupu,
+#   - spoji je do jednoho radku.
 
 stanoviste_eval <- function(
     hab_code,
@@ -45,14 +41,22 @@ stanoviste_eval <- function(
     tables = tables
   )
   
-  hab_code <- base::as.character(hab_code)
-  site_code <- base::as.character(site_code)
+  hab_code <- base::as.character(
+    hab_code
+  )
+  
+  site_code <- base::as.character(
+    site_code
+  )
   
   # ---------------------------------------------------------------------------
   # 2. Pomocne funkce pro beh komponent
   # ---------------------------------------------------------------------------
   
-  run_component <- function(component_name, expr) {
+  run_component <- function(
+    component_name,
+    expr
+  ) {
     
     base::tryCatch(
       expr,
@@ -72,7 +76,11 @@ stanoviste_eval <- function(
     )
   }
   
-  check_one_row <- function(x, component_name) {
+  
+  check_one_row <- function(
+    x,
+    component_name
+  ) {
     
     if (!base::is.data.frame(x)) {
       base::stop(
@@ -109,14 +117,19 @@ stanoviste_eval <- function(
         "stanoviste_eval(): v `",
         component_name,
         "` chybi sloupce: ",
-        base::paste(missing_cols, collapse = ", "),
+        base::paste(
+          missing_cols,
+          collapse = ", "
+        ),
         call. = FALSE
       )
     }
     
     if (
       !base::identical(
-        base::as.character(x$SITECODE[[1]]),
+        base::as.character(
+          x$SITECODE[[1]]
+        ),
         site_code
       )
     ) {
@@ -130,7 +143,9 @@ stanoviste_eval <- function(
     
     if (
       !base::identical(
-        base::as.character(x$HABITAT_CODE[[1]]),
+        base::as.character(
+          x$HABITAT_CODE[[1]]
+        ),
         hab_code
       )
     ) {
@@ -146,28 +161,26 @@ stanoviste_eval <- function(
   }
   
   # ---------------------------------------------------------------------------
-  # 3. Paseky
+  # 3. Paseky - hotovy vstup
   # ---------------------------------------------------------------------------
   
-  paseky <- run_component(
-    "stanoviste_paseky",
-    stanoviste_paseky(
-      hab_code = hab_code,
-      site_code = site_code,
-      site = data$site,
-      vmb1_base = data$vmb1_base,
-      vmb2_base = data$vmb2_base,
-      vmb2_update = data$vmb2_update,
-      vmb0_update = data$vmb0_update,
-      vmb1_meta = tables$vmb1_meta,
-      vmb2_meta = tables$vmb2_meta,
-      vmb0_meta = tables$vmb0_meta
+  paseky <- tables$paseky |>
+    dplyr::filter(
+      base::as.character(SITECODE) == site_code,
+      base::as.character(HABITAT_CODE) == hab_code
+    ) |>
+    dplyr::mutate(
+      SITECODE = base::as.character(
+        SITECODE
+      ),
+      HABITAT_CODE = base::as.character(
+        HABITAT_CODE
+      )
     )
-  )
   
   check_one_row(
     paseky,
-    "stanoviste_paseky"
+    "tables$paseky"
   )
   
   # ---------------------------------------------------------------------------
@@ -241,9 +254,15 @@ stanoviste_eval <- function(
   # ---------------------------------------------------------------------------
   
   component_areas <- base::c(
-    KLIC = base::as.numeric(klic$ROZLOHA[[1]]),
-    DRUHY = base::as.numeric(druhy$ROZLOHA[[1]]),
-    PROSTOR = base::as.numeric(prostor$ROZLOHA[[1]])
+    KLIC = base::as.numeric(
+      klic$ROZLOHA[[1]]
+    ),
+    DRUHY = base::as.numeric(
+      druhy$ROZLOHA[[1]]
+    ),
+    PROSTOR = base::as.numeric(
+      prostor$ROZLOHA[[1]]
+    )
   )
   
   area_values <- component_areas[
@@ -253,7 +272,9 @@ stanoviste_eval <- function(
   
   if (
     base::length(area_values) > 1 &&
-    base::diff(base::range(area_values)) > 1e-6
+    base::diff(
+      base::range(area_values)
+    ) > 1e-6
   ) {
     base::stop(
       "stanoviste_eval(): dilci funkce vratily rozdilnou `ROZLOHA`: ",
@@ -283,11 +304,13 @@ stanoviste_eval <- function(
     if (
       !base::is.na(klic_paseky) &&
       !base::is.na(paseky_area) &&
-      base::abs(klic_paseky - paseky_area) > 1e-8
+      base::abs(
+        klic_paseky - paseky_area
+      ) > 1e-8
     ) {
       base::stop(
         "stanoviste_eval(): `PASEKY_AREA_HA` z KLIC se neshoduje ",
-        "s `ROZLOHA_PASEKY` z pasek.",
+        "s `ROZLOHA_PASEKY` z tabulky pasek.",
         call. = FALSE
       )
     }
