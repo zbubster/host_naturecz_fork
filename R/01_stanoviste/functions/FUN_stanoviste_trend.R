@@ -20,11 +20,13 @@
 #   pokles > 5 % = zlepsujici se
 #
 # CELKOVE_HODNOCENI:
-#   porovnani kategorii dobry / zhorseny / spatny.
+#   puvodni systemovy export trend celkoveho hodnoceni nevyplnoval,
+#   proto zde zustava vzdy NA.
 #
 # U ostatnich indikatoru puvodni skript neurcoval smer zmeny.
-# Shoda (resp. numericka zmena v toleranci) je proto "stabilni",
-# jina zmena je "neznamy".
+# Shoda (resp. numericka zmena v toleranci) je proto "stabilni".
+# Jina zmena, chybejici hodnota nebo neurcitelny smer zustava NA,
+# stejne jako v puvodnim n2k_stanoviste_srovnani.R.
 
 stanoviste_trend <- function(
     current,
@@ -234,47 +236,18 @@ stanoviste_trend <- function(
         
         base::is.na(current_value) |
           base::is.na(previous_value) ~
-          "neznámý",
+          NA_character_,
+        
+        # Stary systemovy export trend CELKOVE_HODNOCENI nevyplnoval.
+        # Kontrola musi byt pred testem shody, jinak by shodna kategorie
+        # dostala chybne trend = "stabilní".
+        parametr_nazev ==
+          "CELKOVE_HODNOCENI" ~
+          NA_character_,
         
         current_value ==
           previous_value ~
           "stabilní",
-        
-        parametr_nazev ==
-          "CELKOVE_HODNOCENI" &
-          previous_value == "dobrý" &
-          current_value %in%
-          base::c(
-            "zhoršený",
-            "špatný"
-          ) ~
-          "zhoršující se",
-        
-        parametr_nazev ==
-          "CELKOVE_HODNOCENI" &
-          previous_value == "zhoršený" &
-          current_value == "špatný" ~
-          "zhoršující se",
-        
-        parametr_nazev ==
-          "CELKOVE_HODNOCENI" &
-          previous_value == "špatný" &
-          current_value %in%
-          base::c(
-            "zhoršený",
-            "dobrý"
-          ) ~
-          "zlepšující se",
-        
-        parametr_nazev ==
-          "CELKOVE_HODNOCENI" &
-          previous_value == "zhoršený" &
-          current_value == "dobrý" ~
-          "zlepšující se",
-        
-        parametr_nazev ==
-          "CELKOVE_HODNOCENI" ~
-          "neznámý",
         
         !base::is.na(current_num) &
           !base::is.na(previous_num) &
@@ -319,7 +292,7 @@ stanoviste_trend <- function(
           "zlepšující se",
         
         TRUE ~
-          "neznámý"
+          NA_character_
       )
     )
   
