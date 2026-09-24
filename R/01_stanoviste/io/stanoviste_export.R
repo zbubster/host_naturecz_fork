@@ -666,7 +666,7 @@ stanoviste_export <- function(
           parametr_nazev == "ROZLOHA" ~ ROZLOHA_STAV,
           parametr_nazev == "KVALITA" ~ KVALITA_STAV,
           parametr_nazev == "CELKOVE_HODNOCENI" ~ CELKOVE_HODNOCENI,
-          TRUE ~ NA_character_
+          TRUE ~ "nehodnocen"
         )
       ) |>
       dplyr::select(
@@ -733,17 +733,13 @@ stanoviste_export <- function(
             "HABITAT_CODE",
             "parametr_nazev"
           )
-        ) |>
-        dplyr::mutate(
-          trend = tidyr::replace_na(
-            trend,
-            "neznámý"
-          )
         )
       
     } else {
       
-      current_long$trend <- "neznámý"
+      # Pokud trend nebyl pocitan, zachovej NA.
+      # Puvodni workflow nerozlisitelny/nepocitany trend nekodovalo jako 1.
+      current_long$trend <- NA_character_
     }
     
     # -------------------------------------------------------------------------
