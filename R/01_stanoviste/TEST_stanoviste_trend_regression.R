@@ -477,7 +477,7 @@ readr::write_csv2(
 
 base::print(
   summary,
-  n = base::Inf
+  n = Inf
 )
 
 base::message(
@@ -496,7 +496,7 @@ base::print(
       old_trend,
       new_trend
     ),
-  n = base::Inf
+  n = Inf
 )
 
 base::message(
