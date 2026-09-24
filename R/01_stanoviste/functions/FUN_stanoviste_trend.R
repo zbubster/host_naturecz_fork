@@ -20,7 +20,8 @@
 #   pokles > 5 % = zlepsujici se
 #
 # CELKOVE_HODNOCENI:
-#   porovnani kategorii dobry / zhorseny / spatny.
+#   puvodni systemovy export trend celkoveho hodnoceni nevyplnoval,
+#   proto zde zustava vzdy NA.
 #
 # U ostatnich indikatoru puvodni skript neurcoval smer zmeny.
 # Shoda (resp. numericka zmena v toleranci) je proto "stabilni".
@@ -237,45 +238,16 @@ stanoviste_trend <- function(
           base::is.na(previous_value) ~
           NA_character_,
         
-        current_value ==
-          previous_value ~
-          "stabilní",
-        
-        parametr_nazev ==
-          "CELKOVE_HODNOCENI" &
-          previous_value == "dobrý" &
-          current_value %in%
-          base::c(
-            "zhoršený",
-            "špatný"
-          ) ~
-          "zhoršující se",
-        
-        parametr_nazev ==
-          "CELKOVE_HODNOCENI" &
-          previous_value == "zhoršený" &
-          current_value == "špatný" ~
-          "zhoršující se",
-        
-        parametr_nazev ==
-          "CELKOVE_HODNOCENI" &
-          previous_value == "špatný" &
-          current_value %in%
-          base::c(
-            "zhoršený",
-            "dobrý"
-          ) ~
-          "zlepšující se",
-        
-        parametr_nazev ==
-          "CELKOVE_HODNOCENI" &
-          previous_value == "zhoršený" &
-          current_value == "dobrý" ~
-          "zlepšující se",
-        
+        # Stary systemovy export trend CELKOVE_HODNOCENI nevyplnoval.
+        # Kontrola musi byt pred testem shody, jinak by shodna kategorie
+        # dostala chybne trend = "stabilní".
         parametr_nazev ==
           "CELKOVE_HODNOCENI" ~
           NA_character_,
+        
+        current_value ==
+          previous_value ~
+          "stabilní",
         
         !base::is.na(current_num) &
           !base::is.na(previous_num) &
