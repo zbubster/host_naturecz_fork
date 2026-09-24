@@ -23,8 +23,9 @@
 #   porovnani kategorii dobry / zhorseny / spatny.
 #
 # U ostatnich indikatoru puvodni skript neurcoval smer zmeny.
-# Shoda (resp. numericka zmena v toleranci) je proto "stabilni",
-# jina zmena je "neznamy".
+# Shoda (resp. numericka zmena v toleranci) je proto "stabilni".
+# Jina zmena, chybejici hodnota nebo neurcitelny smer zustava NA,
+# stejne jako v puvodnim n2k_stanoviste_srovnani.R.
 
 stanoviste_trend <- function(
     current,
@@ -234,7 +235,7 @@ stanoviste_trend <- function(
         
         base::is.na(current_value) |
           base::is.na(previous_value) ~
-          "neznámý",
+          NA_character_,
         
         current_value ==
           previous_value ~
@@ -274,7 +275,7 @@ stanoviste_trend <- function(
         
         parametr_nazev ==
           "CELKOVE_HODNOCENI" ~
-          "neznámý",
+          NA_character_,
         
         !base::is.na(current_num) &
           !base::is.na(previous_num) &
@@ -319,7 +320,7 @@ stanoviste_trend <- function(
           "zlepšující se",
         
         TRUE ~
-          "neznámý"
+          NA_character_
       )
     )
   
