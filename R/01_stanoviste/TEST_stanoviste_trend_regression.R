@@ -302,6 +302,9 @@ new_export <- readr::read_csv(
   locale = readr::locale(
     encoding = "Windows-1250"
   ),
+  col_types = readr::cols(
+    .default = readr::col_character()
+  ),
   show_col_types = FALSE
 )
 
@@ -325,6 +328,9 @@ old_export <- base::lapply(
       path,
       locale = readr::locale(
         encoding = "UTF-8"
+      ),
+      col_types = readr::cols(
+        .default = readr::col_character()
       ),
       show_col_types = FALSE
     )
