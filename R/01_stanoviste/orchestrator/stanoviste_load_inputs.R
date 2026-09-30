@@ -353,7 +353,7 @@ load_stanoviste_inputs <- function(
   )
 
   red_list_res <- resolve_object(
-    candidates = "red_list_species",
+    candidates = c("redlist_species", "red_list_species"),
     label = "data druhu cerveneho seznamu"
   )
 
