@@ -231,7 +231,7 @@ base::message(
 
 base::print(
   stanoviste_inputs$manifest,
-  n = base::Inf
+  n = Inf
 )
 
 
@@ -453,7 +453,7 @@ run_stanoviste_workflow <- function(
     
     base::print(
       export_manifest,
-      n = base::Inf
+      n = Inf
     )
   }
   
