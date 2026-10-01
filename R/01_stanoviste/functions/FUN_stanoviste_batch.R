@@ -210,6 +210,16 @@ stanoviste_batch <- function(
   
   run_one <- function(i) {
     
+    if (!base::requireNamespace(
+      "sf",
+      quietly = TRUE
+    )) {
+      base::stop(
+        "stanoviste_batch(): na workeru chybi balik `sf`.",
+        call. = FALSE
+      )
+    }
+    
     target_i <- targets_run |>
       dplyr::filter(
         .target_id == i
