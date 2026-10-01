@@ -208,14 +208,16 @@ stanoviste_klic <- function(
       DC_SEG = DEGREEOFCONS_SEG * plo_bio_m2_site / sum_plo_bio_m2,
       CN_SEG = CON_SEG * plo_bio_m2_site / sum_plo_bio_m2,
       QUAL_SEG = KVALITA_SEG * plo_bio_m2_site / sum_plo_bio_m2,
-      MD_SEG = dplyr::case_when(
-        base::substr(hab_code, 1, 1) != 9 ~ NA_real_,
-        TRUE ~ MRTVE_DREVO_SEG * plo_bio_m2_site / sum_plo_bio_m2
-      ),
-      KAL_SEG = dplyr::case_when(
-        base::substr(hab_code, 1, 1) != 9 ~ NA_real_,
-        TRUE ~ KALAMITA_SEG * plo_bio_m2_site / sum_plo_bio_m2
-      )
+      MD_SEG = if (base::substr(hab_code, 1, 1) != "9") {
+        NA_real_
+      } else {
+        MRTVE_DREVO_SEG * plo_bio_m2_site / sum_plo_bio_m2
+      },
+      KAL_SEG = if (base::substr(hab_code, 1, 1) != "9") {
+        NA_real_
+      } else {
+        KALAMITA_SEG * plo_bio_m2_site / sum_plo_bio_m2
+      }
     ) |>
     dplyr::mutate(
       TD_FIN = 3 - base::sum(TD_SEG, na.rm = TRUE),
