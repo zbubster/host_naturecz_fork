@@ -119,6 +119,11 @@ paseky_dir <- base::file.path(
   "paseky"
 )
 
+orchestrator_dir <- base::file.path(
+  stanoviste_dir,
+  "orchestrator"
+)
+
 
 # =============================================================================
 # 2. Source helper
@@ -162,7 +167,18 @@ source_required <- function(
 
 
 # =============================================================================
-# 3. Funkce pasek
+# 3. Adapter typu CHU
+# =============================================================================
+
+source_required(
+  orchestrator_dir,
+  "stanoviste_chu_adapter.R",
+  "adapter typu CHU"
+)
+
+
+# =============================================================================
+# 4. Funkce pasek
 # =============================================================================
 
 source_required(
@@ -194,33 +210,38 @@ source_required(
 
 
 # =============================================================================
-# 5. Lazy nacteni VMB
+# 5. Lazy nacteni VMB podle typu CHU
 # =============================================================================
-#
-# Source RUN_paseky.R sam o sobe nenacita tri velke generace VMB.
-# Data se nactou az pri prvnim volani get_paseky_inputs() nebo workflow.
 
-.paseky_inputs_cache <- NULL
+.paseky_inputs_cache <- base::list()
 
 
 get_paseky_inputs <- function(
+    typ_chu = "evl",
     targets = NULL,
     force_reload = FALSE
 ) {
 
+  typ_chu <- stanoviste_normalize_typ_chu(
+    typ_chu
+  )
+
   use_cache <-
     !base::isTRUE(force_reload) &&
     base::is.null(targets) &&
-    !base::is.null(.paseky_inputs_cache)
+    !base::is.null(
+      .paseky_inputs_cache[[typ_chu]]
+    )
 
   if (base::isTRUE(use_cache)) {
     return(
-      .paseky_inputs_cache
+      .paseky_inputs_cache[[typ_chu]]
     )
   }
 
   inputs <- load_paseky_inputs(
     repo_root = repo_root,
+    typ_chu = typ_chu,
     targets = targets
   )
 
@@ -230,24 +251,22 @@ get_paseky_inputs <- function(
   )
 
   if (base::is.null(targets)) {
-    .paseky_inputs_cache <<- inputs
+    .paseky_inputs_cache[[typ_chu]] <<- inputs
   }
 
   inputs
 }
 
 
-# =============================================================================
-# 6. Jedna kombinace
-# =============================================================================
-
 run_paseky_once <- function(
     site_code,
     hab_code,
+    typ_chu = "evl",
     force_reload = FALSE
 ) {
 
   inputs <- get_paseky_inputs(
+    typ_chu = typ_chu,
     force_reload = force_reload
   )
 
@@ -273,19 +292,10 @@ run_paseky_once <- function(
 }
 
 
-# =============================================================================
-# 7. Kompletni workflow
-# =============================================================================
-
 run_paseky_workflow <- function(
+    typ_chu = "evl",
     targets = NULL,
-    output_dir = base::file.path(
-      repo_root,
-      "Outputs",
-      "Data",
-      "stanoviste",
-      "paseky"
-    ),
+    output_dir = NULL,
     calculation_date = base::Sys.Date(),
     parallel = TRUE,
     workers = NULL,
@@ -298,27 +308,26 @@ run_paseky_workflow <- function(
     force_reload = FALSE
 ) {
 
-  # ---------------------------------------------------------------------------
-  # 7.1 Vstupy
-  # ---------------------------------------------------------------------------
+  typ_chu <- stanoviste_normalize_typ_chu(
+    typ_chu
+  )
+
+  if (base::is.null(output_dir)) {
+    output_dir <- base::file.path(
+      repo_root,
+      "Outputs",
+      "Data",
+      "stanoviste",
+      typ_chu,
+      "paseky"
+    )
+  }
 
   inputs <- get_paseky_inputs(
+    typ_chu = typ_chu,
     targets = targets,
     force_reload = force_reload
   )
-
-  base::message(
-    "\nMapovani vstupu pasekoveho workflow:"
-  )
-
-  base::print(
-    inputs$manifest,
-    n = Inf
-  )
-
-  # ---------------------------------------------------------------------------
-  # 7.2 Batch
-  # ---------------------------------------------------------------------------
 
   batch <- paseky_batch(
     targets = inputs$targets,
@@ -330,10 +339,6 @@ run_paseky_workflow <- function(
     stop_on_error = stop_on_error
   )
 
-  # ---------------------------------------------------------------------------
-  # 7.3 Export
-  # ---------------------------------------------------------------------------
-
   export_manifest <- NULL
 
   if (base::isTRUE(write_results)) {
@@ -341,26 +346,15 @@ run_paseky_workflow <- function(
     export_manifest <- paseky_export(
       batch_result = batch,
       output_dir = output_dir,
+      typ_chu = typ_chu,
       calculation_date = calculation_date,
       overwrite_archive = overwrite_archive,
       allow_partial = allow_partial_export
     )
-
-    base::message(
-      "\nPaseky exportovany:"
-    )
-
-    base::print(
-      export_manifest,
-      n = Inf
-    )
   }
 
-  # ---------------------------------------------------------------------------
-  # 7.4 Vystup
-  # ---------------------------------------------------------------------------
-
   base::list(
+    typ_chu = typ_chu,
     result = batch$results,
     log = batch$log,
     selected_pairs = batch$selected_pairs,

@@ -316,6 +316,7 @@ stanoviste_export <- function(
     
     id_cols <- base::intersect(
       base::c(
+        "TYP_CHU",
         "SITECODE",
         "NAZEV",
         "HABITAT_CODE",
@@ -338,6 +339,7 @@ stanoviste_export <- function(
     value_cols <- base::setdiff(
       base::names(x),
       base::c(
+        "TYP_CHU",
         "SITECODE",
         "NAZEV",
         "HABITAT_CODE",
@@ -389,6 +391,7 @@ stanoviste_export <- function(
     
     id_cols <- base::intersect(
       base::c(
+        "TYP_CHU",
         "SITECODE",
         "NAZEV",
         "HABITAT_CODE",
@@ -575,6 +578,7 @@ stanoviste_export <- function(
     value_cols <- base::setdiff(
       base::names(raw_results),
       base::c(
+        "TYP_CHU",
         "SITECODE",
         "NAZEV",
         "HABITAT_CODE",

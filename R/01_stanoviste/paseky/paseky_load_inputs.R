@@ -19,6 +19,7 @@
 
 load_paseky_inputs <- function(
     repo_root = ".",
+    typ_chu = "evl",
     targets = NULL,
     config_env = NULL,
     keep_config_env = FALSE
@@ -38,6 +39,14 @@ load_paseky_inputs <- function(
   )
 
   base::setwd(repo_root)
+
+  typ_chu <- stanoviste_normalize_typ_chu(
+    typ_chu
+  )
+
+  chu_spec <- stanoviste_get_chu_spec(
+    typ_chu
+  )
 
   # ---------------------------------------------------------------------------
   # 1. Config
@@ -379,7 +388,9 @@ load_paseky_inputs <- function(
       "site_code",
       "sitecode",
       "SITE_CODE",
-      "kod_chu"
+      "kod_chu",
+      "REGION_ID",
+      "region_id"
     )
 
     habitat_candidates <- base::c(
@@ -387,7 +398,11 @@ load_paseky_inputs <- function(
       "habitat_code",
       "HABITAT",
       "habitat",
-      "sdf_code"
+      "sdf_code",
+      "feature_code",
+      "FEATURE_CODE",
+      "BIOTOP",
+      "biotop"
     )
 
     site_col <- site_candidates[
@@ -451,29 +466,19 @@ load_paseky_inputs <- function(
   # ---------------------------------------------------------------------------
 
   site_res <- resolve_object(
-    base::c(
-      "evl",
-      "evl_sjtsk"
-    ),
-    "vrstva EVL"
+    chu_spec$site_candidates,
+    base::paste0(
+      "vrstva ",
+      chu_spec$label
+    )
   )
 
-  site <- site_res$value
-
-  if (!base::inherits(site, "sf")) {
-    base::stop(
-      "load_paseky_inputs(): vrstva EVL musi byt sf.",
-      call. = FALSE
-    )
-  }
+  site_raw <- site_res$value
 
   if (base::is.null(targets)) {
 
     targets_res <- resolve_object(
-      base::c(
-        "sites_habitats",
-        "sites_habitats_evl"
-      ),
+      chu_spec$target_candidates,
       "kombinace site x habitat"
     )
 
@@ -605,6 +610,12 @@ load_paseky_inputs <- function(
     "VMB0 base"
   )
 
+  site <- stanoviste_normalize_site(
+    site = site_raw,
+    typ_chu = typ_chu,
+    target_crs = vmb0_base
+  )
+
   vmb2_update <- normalize_update(
     vmb2$vmb_pb_x_a1,
     "VMB2 update"
@@ -636,6 +647,7 @@ load_paseky_inputs <- function(
   # ---------------------------------------------------------------------------
 
   data <- base::list(
+    typ_chu = typ_chu,
     site = site,
     vmb1_base = vmb1_base,
     vmb2_base = vmb2_base,
@@ -675,6 +687,7 @@ load_paseky_inputs <- function(
   )
 
   result <- base::list(
+    typ_chu = typ_chu,
     data = data,
     targets = targets,
     manifest = manifest

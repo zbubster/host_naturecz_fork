@@ -13,10 +13,24 @@
 paseky_export <- function(
     batch_result,
     output_dir,
+    typ_chu = "evl",
     calculation_date = base::Sys.Date(),
     overwrite_archive = FALSE,
     allow_partial = FALSE
 ) {
+
+  typ_chu <- base::tolower(
+    base::as.character(
+      typ_chu
+    )
+  )
+
+  if (!typ_chu %in% base::c("evl", "mzchu", "aktokr")) {
+    base::stop(
+      "paseky_export(): neplatny `typ_chu`.",
+      call. = FALSE
+    )
+  }
 
   if (!base::is.list(batch_result)) {
     base::stop(
@@ -114,7 +128,9 @@ paseky_export <- function(
       )
     ) |>
     dplyr::mutate(
-      TYP_CHU = "EVL",
+      TYP_CHU = base::toupper(
+        typ_chu
+      ),
       DATUM_VYPOCTU = base::as.Date(
         calculation_date
       )

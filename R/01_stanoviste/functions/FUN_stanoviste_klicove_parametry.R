@@ -17,7 +17,8 @@ stanoviste_klic <- function(
     vmb,
     site,
     paseky,
-    habitat_areas
+    habitat_areas,
+    habitat_col = "HABITAT"
 ) {
   
   # site -----------------------------------------------------------------------
@@ -38,9 +39,23 @@ stanoviste_klic <- function(
   
   # Vyber kombinace site x stanoviste ------------------------------------------
   
+  is_forest_habitat <-
+    base::substr(
+      base::as.character(
+        hab_code
+      ),
+      1,
+      1
+    ) %in% base::c(
+      "9",
+      "L"
+    )
+
   vmb_target <- vmb |>
     sf::st_intersection(site_target) |>
-    dplyr::filter(HABITAT == hab_code) |>
+    dplyr::filter(
+      .data[[habitat_col]] == hab_code
+    ) |>
     sf::st_make_valid() |>
     dplyr::filter(
       sf::st_geometry_type(geometry) != "POINT",
@@ -180,7 +195,7 @@ stanoviste_klic <- function(
         KVALITA == 4 ~ 0
       ),
       MRTVE_DREVO_SEG = dplyr::case_when(
-        base::substr(hab_code, 1, 1) != 9 ~ NA_real_,
+        !is_forest_habitat ~ NA_real_,
         DG == "W" ~ 0,
         RB == "W" ~ 0,
         MD == 0 ~ 0,
@@ -190,7 +205,7 @@ stanoviste_klic <- function(
         MD == 4 ~ 0
       ),
       KALAMITA_SEG = dplyr::case_when(
-        base::substr(hab_code, 1, 1) != 9 ~ NA_real_,
+        !is_forest_habitat ~ NA_real_,
         DG == "W" ~ 0,
         RB == "W" ~ 0,
         MD == 0 ~ 0,
@@ -208,12 +223,12 @@ stanoviste_klic <- function(
       DC_SEG = DEGREEOFCONS_SEG * plo_bio_m2_site / sum_plo_bio_m2,
       CN_SEG = CON_SEG * plo_bio_m2_site / sum_plo_bio_m2,
       QUAL_SEG = KVALITA_SEG * plo_bio_m2_site / sum_plo_bio_m2,
-      MD_SEG = if (base::substr(hab_code, 1, 1) != "9") {
+      MD_SEG = if (!is_forest_habitat) {
         NA_real_
       } else {
         MRTVE_DREVO_SEG * plo_bio_m2_site / sum_plo_bio_m2
       },
-      KAL_SEG = if (base::substr(hab_code, 1, 1) != "9") {
+      KAL_SEG = if (!is_forest_habitat) {
         NA_real_
       } else {
         KALAMITA_SEG * plo_bio_m2_site / sum_plo_bio_m2
@@ -233,11 +248,11 @@ stanoviste_klic <- function(
       DC_FIN = base::sum(DC_SEG, na.rm = TRUE),
       CN_FIN = 3 - base::sum(CN_SEG, na.rm = TRUE),
       MD_FIN = dplyr::case_when(
-        base::substr(hab_code, 1, 1) != 9 ~ NA_real_,
+        !is_forest_habitat ~ NA_real_,
         TRUE ~ base::sum(MD_SEG, na.rm = TRUE)
       ),
       KP_FIN = dplyr::case_when(
-        base::substr(hab_code, 1, 1) != 9 ~ NA_real_,
+        !is_forest_habitat ~ NA_real_,
         TRUE ~ base::sum(KAL_SEG, na.rm = TRUE)
       ),
       QUALITY = 4 - base::sum(QUAL_SEG, na.rm = TRUE)
@@ -255,12 +270,40 @@ stanoviste_klic <- function(
     target_area_ha / (site_area_m2 / 10000) * 100
   )
   
-  habitat_area_m2 <- habitat_areas |>
-    dplyr::filter(HABITAT == hab_code) |>
-    dplyr::pull(TOTAL_AREA_ALL)
-  
-  area_relative_perc <- (target_area_ha / (habitat_area_m2 / 10000)) * 100
-  
+  if (base::identical(habitat_col, "HABITAT")) {
+
+    habitat_area_m2 <- habitat_areas |>
+      dplyr::filter(
+        HABITAT == hab_code
+      ) |>
+      dplyr::pull(
+        TOTAL_AREA_ALL
+      )
+
+    if (
+      base::length(habitat_area_m2) == 0 ||
+      base::all(
+        base::is.na(
+          habitat_area_m2
+        )
+      )
+    ) {
+      area_relative_perc <- NA_real_
+    } else {
+      area_relative_perc <-
+        target_area_ha /
+        (
+          habitat_area_m2[[1]] /
+            10000
+        ) *
+        100
+    }
+
+  } else {
+
+    area_relative_perc <- NA_real_
+  }
+
   area_good_ha <- vmb_target |>
     dplyr::filter(SF == "P" | SF == "MP") |>
     dplyr::pull(plo_bio_m2_site) |>
