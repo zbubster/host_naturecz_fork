@@ -49,6 +49,26 @@ stanoviste_eval <- function(
     site_code
   )
   
+  typ_chu <- if (
+    "typ_chu" %in% base::names(data)
+  ) {
+    stanoviste_normalize_typ_chu(
+      data$typ_chu
+    )
+  } else {
+    "evl"
+  }
+
+  habitat_col <- if (
+    "habitat_col" %in% base::names(data)
+  ) {
+    base::as.character(
+      data$habitat_col
+    )
+  } else {
+    "HABITAT"
+  }
+
   # ---------------------------------------------------------------------------
   # 2. Pomocne funkce pro beh komponent
   # ---------------------------------------------------------------------------
@@ -195,7 +215,8 @@ stanoviste_eval <- function(
       vmb = data$vmb,
       site = data$site,
       paseky = paseky,
-      habitat_areas = tables$habitat_areas
+      habitat_areas = tables$habitat_areas,
+      habitat_col = habitat_col
     )
   )
   
@@ -218,7 +239,8 @@ stanoviste_eval <- function(
       paseky = paseky,
       red_list_species = tables$red_list_species,
       invasive_species = tables$invasive_species,
-      expansive_species = tables$expansive_species
+      expansive_species = tables$expansive_species,
+      habitat_col = habitat_col
     )
   )
   
@@ -240,7 +262,8 @@ stanoviste_eval <- function(
       site = data$site,
       paseky = paseky,
       minimisize = tables$minimisize,
-      czechia_line = data$czechia_line
+      czechia_line = data$czechia_line,
+      habitat_col = habitat_col
     )
   )
   
@@ -376,7 +399,13 @@ stanoviste_eval <- function(
         "HABITAT_CODE"
       )
     ) |>
-    dplyr::distinct()
+    dplyr::distinct() |>
+    dplyr::mutate(
+      TYP_CHU = base::toupper(
+        typ_chu
+      ),
+      .before = SITECODE
+    )
   
   if (base::nrow(result) != 1) {
     base::stop(
