@@ -180,7 +180,7 @@ kontrola <- vysledky |>
     ))
   )
 
-base::print(kontrola, n = Inf, width = Inf)
+base::print(kontrola)
 readr::write_csv2(kontrola, base::file.path(test_dir, "kontrola_vysledku.csv"))
 
 base::stopifnot(
