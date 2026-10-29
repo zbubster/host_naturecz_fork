@@ -348,9 +348,22 @@ load_stanoviste_inputs <- function(
     )
   )
 
-  minimisize_res <- resolve_object(
-    candidates = "minimisize",
-    label = "tabulka minimiarealu"
+  # Novy workflow potrebuje puvodni limity v m2, vcetne vazby HABITAT-BIOTOP.
+  # Objekt "minimisize" z configu je agregovany podle HABITAT a prepocteny na ha.
+  minimisize_source <- base::file.path(
+    "Data", "Input", "minimisize.csv"
+  )
+
+  minimisize_raw <- readr::read_csv(
+    minimisize_source,
+    locale = readr::locale(encoding = "Windows-1250"),
+    col_types = readr::cols(
+      HABITAT = readr::col_character(),
+      BIOTOP = readr::col_character(),
+      MINIMISIZE = readr::col_double(),
+      .default = readr::col_guess()
+    ),
+    show_col_types = FALSE
   )
 
   habitat_areas_res <- resolve_object(
@@ -625,7 +638,7 @@ load_stanoviste_inputs <- function(
 
   tables <- base::list(
     habitat_areas = habitat_areas_res$value,
-    minimisize = minimisize_res$value,
+    minimisize = minimisize_raw,
     red_list_species = red_list_res$value,
     invasive_species = invasive_res$value,
     expansive_species = expansive_res$value,
@@ -658,10 +671,7 @@ load_stanoviste_inputs <- function(
         "R/00_config: ",
         habitat_areas_res$name
       ),
-      base::paste0(
-        "R/00_config: ",
-        minimisize_res$name
-      ),
+      minimisize_source,
       base::paste0(
         "R/00_config: ",
         red_list_res$name
