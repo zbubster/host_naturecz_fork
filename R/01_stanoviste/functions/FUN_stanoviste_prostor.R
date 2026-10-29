@@ -159,9 +159,27 @@ stanoviste_prostor <- function(
     stats::na.omit() |>
     base::unique()
   
+  minimisize_col <- if (
+    base::identical(
+      habitat_col,
+      "BIOTOP"
+    ) &&
+    "BIOTOP" %in% base::names(
+      minimisize
+    )
+  ) {
+    "BIOTOP"
+  } else {
+    "HABITAT"
+  }
+
   base_minimi_values <- minimisize |>
-    dplyr::filter(HABITAT == hab_code) |>
-    dplyr::pull(MINIMISIZE) |>
+    dplyr::filter(
+      .data[[minimisize_col]] == hab_code
+    ) |>
+    dplyr::pull(
+      MINIMISIZE
+    ) |>
     base::as.numeric()
   
   if (
@@ -188,10 +206,20 @@ stanoviste_prostor <- function(
         if ("BIOTOP" %in% base::names(minimisize)) {
           biotop_values <- minimisize |>
             dplyr::filter(
-              HABITAT == hab_code,
               BIOTOP == biotop
+            )
+
+          if (!base::identical(habitat_col, "BIOTOP")) {
+            biotop_values <- biotop_values |>
+              dplyr::filter(
+                HABITAT == hab_code
+              )
+          }
+
+          biotop_values <- biotop_values |>
+            dplyr::pull(
+              MINIMISIZE
             ) |>
-            dplyr::pull(MINIMISIZE) |>
             base::as.numeric()
           
           if (
