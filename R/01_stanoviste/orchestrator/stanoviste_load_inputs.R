@@ -21,6 +21,7 @@
 
 load_stanoviste_inputs <- function(
     repo_root = ".",
+    typ_chu = "evl",
     paseky_file = NULL,
     config_env = NULL,
     keep_config_env = FALSE
@@ -41,6 +42,14 @@ load_stanoviste_inputs <- function(
 
   # Configy i load_vmb() pouzivaji relativni cesty vuci koreni repozitare.
   base::setwd(repo_root)
+
+  typ_chu <- stanoviste_normalize_typ_chu(
+    typ_chu
+  )
+
+  chu_spec <- stanoviste_get_chu_spec(
+    typ_chu
+  )
 
   # ---------------------------------------------------------------------------
   # 1. Source existujici config vrstvy
@@ -332,16 +341,29 @@ load_stanoviste_inputs <- function(
   # ---------------------------------------------------------------------------
 
   site_res <- resolve_object(
-    candidates = base::c(
-      "evl",
-      "evl_sjtsk"
-    ),
-    label = "vrstva EVL"
+    candidates = chu_spec$site_candidates,
+    label = base::paste0(
+      "vrstva ",
+      chu_spec$label
+    )
   )
 
-  minimisize_res <- resolve_object(
-    candidates = "minimisize",
-    label = "tabulka minimiarealu"
+  # Novy workflow potrebuje puvodni limity v m2, vcetne vazby HABITAT-BIOTOP.
+  # Objekt "minimisize" z configu je agregovany podle HABITAT a prepocteny na ha.
+  minimisize_source <- base::file.path(
+    "Data", "Input", "minimisize.csv"
+  )
+
+  minimisize_raw <- readr::read_csv(
+    minimisize_source,
+    locale = readr::locale(encoding = "Windows-1250"),
+    col_types = readr::cols(
+      HABITAT = readr::col_character(),
+      BIOTOP = readr::col_character(),
+      MINIMISIZE = readr::col_double(),
+      .default = readr::col_guess()
+    ),
+    show_col_types = FALSE
   )
 
   habitat_areas_res <- resolve_object(
@@ -367,31 +389,7 @@ load_stanoviste_inputs <- function(
     label = "data expanznich druhu"
   )
 
-  site <- site_res$value
-
-  if (!"SHAPE_AREA" %in% base::names(site)) {
-
-    if ("SHAPE.AREA" %in% base::names(site)) {
-
-      site$SHAPE_AREA <- base::as.numeric(
-        site$SHAPE.AREA
-      )
-
-    } else {
-
-      if (sf::st_is_longlat(site)) {
-        base::stop(
-          "load_stanoviste_inputs(): EVL nema `SHAPE_AREA` a je ",
-          "v geografickem CRS.",
-          call. = FALSE
-        )
-      }
-
-      site$SHAPE_AREA <- units::drop_units(
-        sf::st_area(site)
-      )
-    }
-  }
+  site_raw <- site_res$value
 
   # Hranice CR
   if (
@@ -495,16 +493,32 @@ load_stanoviste_inputs <- function(
     vmb0$vmb_shp_sjtsk_akt
   )
 
+  site <- stanoviste_normalize_site(
+    site = site_raw,
+    typ_chu = typ_chu,
+    target_crs = vmb_current
+  )
+
   if (base::is.null(paseky_file)) {
     paseky_file <- base::file.path(
       repo_root,
       "Outputs",
       "Data",
       "stanoviste",
+      typ_chu,
       "paseky",
       "paseky_results_latest.csv"
     )
   }
+
+  legacy_latest <- base::file.path(
+    repo_root,
+    "Outputs",
+    "Data",
+    "stanoviste",
+    "paseky",
+    "paseky_results_latest.csv"
+  )
 
   if (base::file.exists(paseky_file)) {
 
@@ -521,6 +535,25 @@ load_stanoviste_inputs <- function(
     paseky_source <- paseky_file
 
   } else if (
+    typ_chu == "evl" &&
+    base::file.exists(legacy_latest)
+  ) {
+
+    base::warning(
+      "load_stanoviste_inputs(): pouziva se puvodni umisteni EVL pasek: ",
+      legacy_latest,
+      call. = FALSE
+    )
+
+    paseky_raw <- readr::read_csv2(
+      legacy_latest,
+      show_col_types = FALSE
+    )
+
+    paseky_source <- legacy_latest
+
+  } else if (
+    typ_chu == "evl" &&
     "paseky" %in% base::names(vmb0) &&
     !base::is.null(vmb0$paseky)
   ) {
@@ -537,7 +570,10 @@ load_stanoviste_inputs <- function(
   } else {
 
     base::stop(
-      "load_stanoviste_inputs(): nebyla nalezena hotova tabulka pasek: ",
+      "load_stanoviste_inputs(): nebyla nalezena hotova tabulka pasek pro ",
+      "`typ_chu = ",
+      typ_chu,
+      "`: ",
       paseky_file,
       call. = FALSE
     )
@@ -546,6 +582,29 @@ load_stanoviste_inputs <- function(
   paseky <- normalize_paseky(
     paseky_raw
   )
+
+  if ("TYP_CHU" %in% base::names(paseky)) {
+
+    paseky_types <- paseky$TYP_CHU |>
+      base::as.character() |>
+      base::toupper() |>
+      stats::na.omit() |>
+      base::unique()
+
+    if (
+      base::length(paseky_types) > 0 &&
+      !base::all(
+        paseky_types == base::toupper(
+          typ_chu
+        )
+      )
+    ) {
+      base::stop(
+        "load_stanoviste_inputs(): tabulka pasek patri k jinemu `typ_chu`.",
+        call. = FALSE
+      )
+    }
+  }
 
   duplicate_paseky <- paseky |>
     dplyr::count(
@@ -570,6 +629,8 @@ load_stanoviste_inputs <- function(
   # ---------------------------------------------------------------------------
 
   data <- base::list(
+    typ_chu = typ_chu,
+    habitat_col = chu_spec$habitat_col,
     site = site,
     vmb = vmb_current,
     czechia_line = czechia_line
@@ -577,7 +638,7 @@ load_stanoviste_inputs <- function(
 
   tables <- base::list(
     habitat_areas = habitat_areas_res$value,
-    minimisize = minimisize_res$value,
+    minimisize = minimisize_raw,
     red_list_species = red_list_res$value,
     invasive_species = invasive_res$value,
     expansive_species = expansive_res$value,
@@ -610,10 +671,7 @@ load_stanoviste_inputs <- function(
         "R/00_config: ",
         habitat_areas_res$name
       ),
-      base::paste0(
-        "R/00_config: ",
-        minimisize_res$name
-      ),
+      minimisize_source,
       base::paste0(
         "R/00_config: ",
         red_list_res$name
@@ -631,6 +689,7 @@ load_stanoviste_inputs <- function(
   )
 
   result <- base::list(
+    typ_chu = typ_chu,
     data = data,
     tables = tables,
     manifest = manifest

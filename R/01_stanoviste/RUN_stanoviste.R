@@ -190,6 +190,7 @@ source_required(
 source_required(
   orchestrator_dir,
   base::c(
+    "stanoviste_chu_adapter.R",
     "stanoviste_load_inputs.R",
     "stanoviste_input_validator.R",
     "stanoviste_central_orchestrator.R",
@@ -212,67 +213,147 @@ source_required(
 
 
 # =============================================================================
-# 6. Nacteni vstupu
+# 6. Lazy nacteni vstupu podle typu CHU
 # =============================================================================
 
-stanoviste_inputs <- load_stanoviste_inputs(
-  repo_root = repo_root,
-  keep_config_env = TRUE
-)
-
-stanoviste_hodnoceni_inputs <- stanoviste_get_hodnoceni_inputs(
-  stanoviste_inputs = stanoviste_inputs,
-  repo_root = repo_root
-)
-
-base::message(
-  "\nMapovani vstupu hlavniho workflow:"
-)
-
-base::print(
-  stanoviste_inputs$manifest,
-  n = Inf
-)
+.stanoviste_inputs_cache <- base::list()
+.stanoviste_hodnoceni_cache <- base::list()
 
 
-# =============================================================================
-# 7. Jedna kombinace site x habitat
-# =============================================================================
+get_stanoviste_inputs <- function(
+    typ_chu = "evl",
+    force_reload = FALSE
+) {
+
+  typ_chu <- stanoviste_normalize_typ_chu(
+    typ_chu
+  )
+
+  use_cache <-
+    !base::isTRUE(force_reload) &&
+    !base::is.null(
+      .stanoviste_inputs_cache[[typ_chu]]
+    )
+
+  if (base::isTRUE(use_cache)) {
+    return(
+      .stanoviste_inputs_cache[[typ_chu]]
+    )
+  }
+
+  inputs <- load_stanoviste_inputs(
+    repo_root = repo_root,
+    typ_chu = typ_chu,
+    keep_config_env = TRUE
+  )
+
+  .stanoviste_inputs_cache[[typ_chu]] <<- inputs
+  .stanoviste_hodnoceni_cache[[typ_chu]] <<- NULL
+
+  base::message(
+    "\nMapovani vstupu hlavniho workflow (",
+    typ_chu,
+    "):"
+  )
+
+  base::print(
+    inputs$manifest,
+    n = Inf
+  )
+
+  inputs
+}
+
+
+get_stanoviste_hodnoceni_inputs <- function(
+    typ_chu = "evl",
+    force_reload = FALSE
+) {
+
+  typ_chu <- stanoviste_normalize_typ_chu(
+    typ_chu
+  )
+
+  if (typ_chu != "evl") {
+    base::stop(
+      "Stavove hodnoceni je zatim pripravene pouze pro `typ_chu = \"evl\"`. ",
+      "Pro ostatni typy chybi explicitni limity.",
+      call. = FALSE
+    )
+  }
+
+  inputs <- get_stanoviste_inputs(
+    typ_chu = typ_chu,
+    force_reload = force_reload
+  )
+
+  if (
+    !base::isTRUE(force_reload) &&
+    !base::is.null(
+      .stanoviste_hodnoceni_cache[[typ_chu]]
+    )
+  ) {
+    return(
+      .stanoviste_hodnoceni_cache[[typ_chu]]
+    )
+  }
+
+  hodnoceni_inputs <- stanoviste_get_hodnoceni_inputs(
+    stanoviste_inputs = inputs,
+    repo_root = repo_root
+  )
+
+  .stanoviste_hodnoceni_cache[[typ_chu]] <<-
+    hodnoceni_inputs
+
+  hodnoceni_inputs
+}
+
 
 run_stanoviste_once <- function(
     site_code,
     hab_code,
-    return_components = FALSE
+    typ_chu = "evl",
+    return_components = FALSE,
+    force_reload = FALSE
 ) {
-  
+
+  inputs <- get_stanoviste_inputs(
+    typ_chu = typ_chu,
+    force_reload = force_reload
+  )
+
   stanoviste_eval(
     hab_code = hab_code,
     site_code = site_code,
-    data = stanoviste_inputs$data,
-    tables = stanoviste_inputs$tables,
+    data = inputs$data,
+    tables = inputs$tables,
     return_components = return_components
   )
 }
 
 
-# =============================================================================
-# 8. Batch raw vypoctu
-# =============================================================================
-
 run_stanoviste_batch <- function(
     targets,
+    typ_chu = "evl",
     parallel = FALSE,
     workers = NULL,
     parallel_plan = "multisession",
     future_seed = TRUE,
     return_components = FALSE,
-    stop_on_error = TRUE
+    stop_on_error = TRUE,
+    force_reload = FALSE
 ) {
-  
+
+  inputs <- get_stanoviste_inputs(
+    typ_chu = typ_chu,
+    force_reload = force_reload
+  )
+
   stanoviste_batch(
     targets = targets,
-    data = stanoviste_inputs$data,
-    tables = stanoviste_inputs$tables,
+    data = inputs$data,
+    tables = inputs$tables,
     parallel = parallel,
     workers = workers,
     parallel_plan = parallel_plan,
@@ -283,12 +364,9 @@ run_stanoviste_batch <- function(
 }
 
 
-# =============================================================================
-# 9. Kompletni workflow
-# =============================================================================
-
 run_stanoviste_workflow <- function(
     targets,
+    typ_chu = "evl",
     previous_results = NULL,
     previous_source = NULL,
     calculate_trend = NULL,
@@ -302,12 +380,7 @@ run_stanoviste_workflow <- function(
         "%Y"
       )
     ),
-    output_dir = base::file.path(
-      repo_root,
-      "Outputs",
-      "Data",
-      "stanoviste"
-    ),
+    output_dir = NULL,
     write_results = TRUE,
     overwrite = FALSE,
     parallel = FALSE,
@@ -315,19 +388,40 @@ run_stanoviste_workflow <- function(
     parallel_plan = "multisession",
     future_seed = TRUE,
     return_components = FALSE,
-    stop_on_error = TRUE
+    stop_on_error = TRUE,
+    force_reload = FALSE
 ) {
-  
-  # ---------------------------------------------------------------------------
-  # 9.1 Trend - auto rezim
-  # ---------------------------------------------------------------------------
-  
+
+  typ_chu <- stanoviste_normalize_typ_chu(
+    typ_chu
+  )
+
+  if (base::is.null(output_dir)) {
+    output_dir <- base::file.path(
+      repo_root,
+      "Outputs",
+      "Data",
+      "stanoviste",
+      typ_chu
+    )
+  }
+
+  inputs <- get_stanoviste_inputs(
+    typ_chu = typ_chu,
+    force_reload = force_reload
+  )
+
+  is_evl <- base::identical(
+    typ_chu,
+    "evl"
+  )
+
   if (base::is.null(calculate_trend)) {
     calculate_trend <-
       !base::is.null(previous_results) |
       !base::is.null(previous_source)
   }
-  
+
   if (
     base::isTRUE(calculate_trend) &&
     base::is.null(previous_results) &&
@@ -339,13 +433,22 @@ run_stanoviste_workflow <- function(
       call. = FALSE
     )
   }
-  
-  # ---------------------------------------------------------------------------
-  # 9.2 Batch
-  # ---------------------------------------------------------------------------
-  
-  batch_result <- run_stanoviste_batch(
+
+  if (
+    !is_evl &&
+    base::isTRUE(calculate_trend)
+  ) {
+    base::stop(
+      "Trend je zatim podporovan pouze pro `typ_chu = \"evl\"`, ",
+      "protoze pro ostatni typy zatim chybi stavove limity.",
+      call. = FALSE
+    )
+  }
+
+  batch_result <- stanoviste_batch(
     targets = targets,
+    data = inputs$data,
+    tables = inputs$tables,
     parallel = parallel,
     workers = workers,
     parallel_plan = parallel_plan,
@@ -353,134 +456,108 @@ run_stanoviste_workflow <- function(
     return_components = return_components,
     stop_on_error = stop_on_error
   )
-  
-  if (base::is.data.frame(batch_result)) {
-    
-    raw_results <- batch_result
-    batch_log <- NULL
-    
-  } else if (
-    base::is.list(batch_result) &&
-    "results" %in% base::names(batch_result)
-  ) {
-    
-    raw_results <- batch_result$results
-    
-    batch_log <- if (
-      "log" %in% base::names(batch_result)
-    ) {
-      batch_result$log
-    } else {
-      NULL
-    }
-    
-  } else {
-    
-    base::stop(
-      "run_stanoviste_workflow(): neocekavany vystup stanoviste_batch().",
-      call. = FALSE
-    )
-  }
-  
-  # ---------------------------------------------------------------------------
-  # 9.3 Hodnoceni aktualniho stavu
-  # ---------------------------------------------------------------------------
-  
-  evaluated_results <- stanoviste_hodnoceni(
-    results = raw_results,
-    limits = stanoviste_hodnoceni_inputs$limits,
-    minimisize = stanoviste_hodnoceni_inputs$minimisize,
-    site_context = stanoviste_hodnoceni_inputs$site_context,
-    sdo_ii_sites = stanoviste_hodnoceni_inputs$sdo_ii_sites
-  )
-  
-  # ---------------------------------------------------------------------------
-  # 9.4 Trend
-  # ---------------------------------------------------------------------------
-  
+
+  raw_results <- batch_result$results
+  batch_log <- batch_result$log
+
+  hodnoceni_inputs <- NULL
+  evaluated_results <- NULL
+  final_results <- NULL
   trend_components <- NULL
-  
-  if (base::isTRUE(calculate_trend)) {
-    
-    trend_result <- stanoviste_trend_workflow(
-      current_results = evaluated_results,
-      previous_results = previous_results,
-      previous_source = previous_source,
-      limits = stanoviste_hodnoceni_inputs$limits,
-      minimisize = stanoviste_hodnoceni_inputs$minimisize,
-      site_context = stanoviste_hodnoceni_inputs$site_context,
-      sdo_ii_sites = stanoviste_hodnoceni_inputs$sdo_ii_sites,
-      return_components = return_components
+
+  if (is_evl) {
+
+    hodnoceni_inputs <- get_stanoviste_hodnoceni_inputs(
+      typ_chu = typ_chu
     )
-    
-    if (base::isTRUE(return_components)) {
-      final_results <- trend_result$result
-      trend_components <- trend_result
+
+    evaluated_results <- stanoviste_hodnoceni(
+      results = raw_results,
+      limits = hodnoceni_inputs$limits,
+      minimisize = hodnoceni_inputs$minimisize,
+      site_context = hodnoceni_inputs$site_context,
+      sdo_ii_sites = hodnoceni_inputs$sdo_ii_sites
+    )
+
+    if (base::isTRUE(calculate_trend)) {
+
+      trend_result <- stanoviste_trend_workflow(
+        current_results = evaluated_results,
+        previous_results = previous_results,
+        previous_source = previous_source,
+        limits = hodnoceni_inputs$limits,
+        minimisize = hodnoceni_inputs$minimisize,
+        site_context = hodnoceni_inputs$site_context,
+        sdo_ii_sites = hodnoceni_inputs$sdo_ii_sites,
+        return_components = return_components
+      )
+
+      if (base::isTRUE(return_components)) {
+        final_results <- trend_result$result
+        trend_components <- trend_result
+      } else {
+        final_results <- trend_result
+      }
+
     } else {
-      final_results <- trend_result
+
+      final_results <- evaluated_results
     }
-    
-  } else {
-    
-    final_results <- evaluated_results
   }
-  
-  # ---------------------------------------------------------------------------
-  # 9.5 Export
-  # ---------------------------------------------------------------------------
-  
+
   export_manifest <- NULL
-  
+
   if (base::isTRUE(write_results)) {
-    
+
     export_manifest <- stanoviste_export(
       raw_results = raw_results,
       evaluated_results = evaluated_results,
       final_results = final_results,
       batch_log = batch_log,
-      indicator_lookup = stanoviste_hodnoceni_inputs$indicator_lookup,
-      habitat_lookup = stanoviste_hodnoceni_inputs$habitat_lookup,
-      site_context = stanoviste_hodnoceni_inputs$site_context,
+      indicator_lookup = if (is_evl) {
+        hodnoceni_inputs$indicator_lookup
+      } else {
+        NULL
+      },
+      habitat_lookup = if (is_evl) {
+        hodnoceni_inputs$habitat_lookup
+      } else {
+        NULL
+      },
+      site_context = if (is_evl) {
+        hodnoceni_inputs$site_context
+      } else {
+        NULL
+      },
       output_dir = output_dir,
       period_id = period_id,
       assessment_year = assessment_year,
+      write_evaluated = is_evl,
+      write_final = is_evl,
+      write_final_long = is_evl,
+      write_legacy_system = is_evl,
+      write_legacy_xlsx = is_evl,
       overwrite = overwrite
     )
-    
-    base::message(
-      "\nExport dokonceny:"
-    )
-    
-    base::print(
-      export_manifest,
-      n = Inf
-    )
   }
-  
-  # ---------------------------------------------------------------------------
-  # 9.6 Vystup runneru
-  # ---------------------------------------------------------------------------
-  
+
   out <- base::list(
-    result = final_results,
+    typ_chu = typ_chu,
+    result = if (is_evl) final_results else raw_results,
     raw = raw_results,
     evaluated = evaluated_results,
     batch_log = batch_log,
     export = export_manifest
   )
-  
+
   if (base::isTRUE(return_components)) {
     out$batch <- batch_result
     out$trend <- trend_components
   }
-  
+
   out
 }
 
-
-# =============================================================================
-# 10. Volitelne CLI pro jednu kombinaci
-# =============================================================================
 
 args <- base::commandArgs(
   trailingOnly = TRUE
@@ -490,19 +567,20 @@ if (
   !base::interactive() &&
   base::length(args) > 0
 ) {
-  
-  if (base::length(args) != 2) {
+
+  if (!base::length(args) %in% base::c(2, 3)) {
     base::stop(
-      "Pouziti pro jednu kombinaci: ",
-      "Rscript R/01_stanoviste/RUN_stanoviste.R <site_code> <hab_code>",
+      "Pouziti: Rscript R/01_stanoviste/RUN_stanoviste.R ",
+      "<site_code> <hab_code> [typ_chu]",
       call. = FALSE
     )
   }
-  
+
   result <- run_stanoviste_once(
     site_code = args[[1]],
-    hab_code = args[[2]]
+    hab_code = args[[2]],
+    typ_chu = if (base::length(args) == 3) args[[3]] else "evl"
   )
-  
+
   base::print(result)
 }
